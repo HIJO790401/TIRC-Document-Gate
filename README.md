@@ -33,18 +33,25 @@ Check SUBJECT / BOUNDARY / CAUSE / REPLAY / REPAIR / RESPONSIBILITY each time; d
 ## Project links
 - Repository: https://github.com/HIJO790401/TIRC-Document-Gate
 - Official Portal: https://hijo790401.github.io/shen-yao-portal/
+- GitHub Pages Demo URL: https://hijo790401.github.io/TIRC-Document-Gate/
 
 ## Run frontend demo
 ```bash
 cd demo
 npm install
 npm run dev
-npm run build
 ```
 
-## GitHub Pages (manual)
-Auto-deploy workflow is intentionally removed.
-See `docs/GITHUB_PAGES.md` for manual publishing steps.
+## Build GitHub Pages (manual)
+```bash
+cd demo
+npm install
+npm run build:pages
+```
+
+Then set in GitHub:
+
+**Settings → Pages → Deploy from a branch → main → /docs**
 
 ## Local deployment
 ```bash

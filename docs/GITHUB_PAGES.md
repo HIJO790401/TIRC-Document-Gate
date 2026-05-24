@@ -1,35 +1,32 @@
-# GitHub Pages Setup (Manual, No Auto-Deploy)
+# GitHub Pages Manual Deployment
 
-This repository is configured for **manual GitHub Pages publishing**.
+This project uses **manual GitHub Pages deployment** from the `main` branch `docs/` folder.
 
-- Source repo: https://github.com/HIJO790401/TIRC-Document-Gate
-- Official portal: https://hijo790401.github.io/shen-yao-portal/
-
-## 1) Build the demo locally
+## Build static demo into docs/
 
 ```bash
 cd demo
 npm install
-npm run build
+npm run build:pages
 ```
 
-## 2) Publish manually
+After build, static files are generated to:
 
-Use one of these options:
+- `docs/index.html`
+- `docs/assets/*`
 
-- Upload `demo/dist` artifacts to your preferred static hosting flow.
-- Or push `demo/dist` contents to a dedicated Pages branch (`gh-pages`) using your own release process.
+## GitHub Pages setting
 
-## 3) Vite base path
+In GitHub repository settings:
 
-Set base path during build when needed:
+1. Open **Settings → Pages**
+2. Under **Build and deployment**, choose **Deploy from a branch**
+3. Branch: `main`
+4. Folder: `/docs`
+5. Save
 
-```bash
-VITE_BASE_PATH=/shen-yao-portal/ npm run build
-```
+Site URL:
 
-If you host under a different path, replace `/shen-yao-portal/` accordingly.
+- https://hijo790401.github.io/TIRC-Document-Gate/
 
-## 4) Why no auto deploy workflow
-
-Auto deployment GitHub Actions workflow has been removed intentionally, so repository users can control their own publishing and approval process.
+No GitHub Actions workflow is required for this deployment method.

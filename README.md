@@ -30,6 +30,10 @@ Check SUBJECT / BOUNDARY / CAUSE / REPLAY / REPAIR / RESPONSIBILITY each time; d
 - 機密文件應留在使用者自己的內部環境。
 - Demo 只使用假資料與範例文件。
 
+## Project links
+- Repository: https://github.com/HIJO790401/TIRC-Document-Gate
+- Official Portal: https://hijo790401.github.io/shen-yao-portal/
+
 ## Run frontend demo
 ```bash
 cd demo
@@ -37,6 +41,10 @@ npm install
 npm run dev
 npm run build
 ```
+
+## GitHub Pages (manual)
+Auto-deploy workflow is intentionally removed.
+See `docs/GITHUB_PAGES.md` for manual publishing steps.
 
 ## Local deployment
 ```bash

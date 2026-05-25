@@ -17,7 +17,6 @@ const demoCases: DemoCase[] = [
   { id: 'case4', level: 'HOLD_REVIEW', docId: 'strategy-memo', actionKey: 'share external', zh: { btn: '案例四｜需人工審查', doc: '內部策略文件', action: '對外分享', expected: '需人工審查', form: { subject: '團隊成員想要向外部聯絡人分享摘要。', boundary: '可能只分享高層資訊，但核准版本尚不明確。', cause: '外部聯絡人可能需要背景脈絡。', replay: '目前無法確認將送出的版本。', repair: '需要主管確認後才能處理。', responsibility: '責任歸屬尚未明確指定。' } }, en: { btn: 'Case 4 | Hold Review', doc: 'Internal Strategy Memo', action: 'share external', expected: 'HOLD_REVIEW', form: { subject: 'Team member wants to share a summary with an outside contact.', boundary: 'Maybe only high-level content, but approved version is unclear.', cause: 'The outside contact may need context.', replay: 'Not sure which version will be sent.', repair: 'Manager confirmation is required.', responsibility: 'Responsibility owner is not clearly assigned.' } } },
   { id: 'case5', level: 'VOID_INTERPRETATION', docId: 'bank-policy', actionKey: 'share external', zh: { btn: '案例五｜解釋無效', doc: '銀行風控文件', action: '對外分享', expected: '解釋無效', form: { subject: '大家都說這份文件可以分享。', boundary: '沒有清楚邊界。', cause: '可能有幫助。', replay: '沒有回放。', repair: '不確定。', responsibility: '僅供參考。' } }, en: { btn: 'Case 5 | Void Interpretation', doc: 'Bank Risk Policy', action: 'share external', expected: 'VOID_INTERPRETATION', form: { subject: 'Everyone says this is safe to share.', boundary: 'No clear boundary.', cause: 'Probably useful.', replay: 'No replay.', repair: 'Not sure.', responsibility: 'For reference only.' } } }
 ];
-
 const emptyForm: FormFields = { subject: '', boundary: '', cause: '', replay: '', repair: '', responsibility: '' };
 
 export function App() {
@@ -27,81 +26,83 @@ export function App() {
   const [result, setResult] = useState<InterpretationResult | null>(null);
   const c = tx(lang);
   const active = lang === 'zh-TW' ? selectedCase.zh : selectedCase.en;
-
-  const required = useMemo(() => {
-    const action = selectedCase.actionKey;
-    if (action.includes('final') || action.includes('external')) return 'T3_FINAL_DELIVERY';
-    if (action.includes('summarize') || action.includes('ask')) return 'T2_MIDDLE_INTERPRETATION';
-    return 'T1_TRANSFER_ONLY';
-  }, [selectedCase.actionKey]);
-
+  const required = useMemo(() => selectedCase.actionKey.includes('final') || selectedCase.actionKey.includes('external') ? 'T3_FINAL_DELIVERY' : selectedCase.actionKey.includes('summarize') || selectedCase.actionKey.includes('ask') ? 'T2_MIDDLE_INTERPRETATION' : 'T1_TRANSFER_ONLY', [selectedCase.actionKey]);
   const runDemo = (form: FormFields) => {
     const res = evaluateInterpretation({ documentId: selectedCase.docId, action: selectedCase.actionKey, language: lang, ...form });
-    setResult(res);
-    const logs = load<InterpretationResult[]>('audit', []);
-    save('audit', [res, ...logs].slice(0, 20));
+    setResult(res); const logs = load<InterpretationResult[]>('audit', []); save('audit', [res, ...logs].slice(0, 20));
   };
 
   return <div className='page'>
-    <header className='hero card'>
-      <div className='lang-wrap'><button className='lang-btn' onClick={() => { const n: Language = lang === 'zh-TW' ? 'en' : 'zh-TW'; setLang(n); save('lang', n); }}>{c.langSwitch}</button></div>
-      <h1>{c.heroTitleEn}<br />{c.heroTitleZh}</h1>
-      <p>{c.heroSubtitle}</p><p>{c.heroNote}</p>
+    <header className='hero card'><div className='lang-wrap'><button className='lang-btn' onClick={() => { const n: Language = lang === 'zh-TW' ? 'en' : 'zh-TW'; setLang(n); save('lang', n); }}>{c.langSwitch}</button></div>
+      <h1>{c.heroTitleEn}<br />{c.heroTitleZh}</h1><p>{c.heroSubtitle}</p><p>{c.heroNote}</p>
       <div className='btn-row'><a className='btn primary' href='https://hijo790401.github.io/shen-yao-portal/' target='_blank' rel='noreferrer'>{c.portal}</a><a className='btn' href='https://github.com/HIJO790401/TIRC-Document-Gate' target='_blank' rel='noreferrer'>{c.repo}</a></div>
     </header>
-
     <section className='card'><h2>{c.whyTitle}</h2><p>{c.why1}</p><p>{c.why2}</p><p>{c.why3}</p></section>
-
-    <section className='card'><h2>{c.rightsTitle}</h2><div className='grid3'>
-      <article className='mini'><h3>{c.lv1}</h3><p><b>Code:</b> T1_TRANSFER_ONLY</p><p>{c.lv1d}</p></article>
-      <article className='mini'><h3>{c.lv2}</h3><p><b>Code:</b> T2_MIDDLE_INTERPRETATION</p><p>{c.lv2d}</p></article>
-      <article className='mini'><h3>{c.lv3}</h3><p><b>Code:</b> T3_FINAL_DELIVERY</p><p>{c.lv3d}</p></article>
-    </div><div className='status-row'><span>{c.hold}</span><small>(HOLD_REVIEW)</small><span>{c.void}</span><small>(VOID_INTERPRETATION)</small></div></section>
-
-    <section className='card'>
-      <h2>{c.fixedDemo}</h2><p>{c.selectCase}</p>
-      <div className='case-grid'>{demoCases.map((item, i) => <button key={item.id} className={`case-btn ${item.id === selectedCase.id ? 'active' : ''}`} onClick={() => setSelectedCase(item)}>{(lang==='zh-TW'?item.zh.btn:item.en.btn) || c.caseNames[i]}</button>)}</div>
-      <div className='mini'>
-        <p><b>{c.doc}：</b>{active.doc}</p><p><b>{c.action}：</b>{active.action}</p><p><b>{c.expected}：</b>{active.expected}</p><h3>{c.closureTitle}</h3>
-        {(Object.keys(active.form) as FieldKey[]).map((k)=><p key={k}><b>{c.fieldLabels[k]}：</b>{active.form[k]}</p>)}
-      </div>
+    <section className='card'><h2>{c.rightsTitle}</h2><div className='grid3'><article className='mini'><h3>{c.lv1}</h3><p><b>Code:</b> T1_TRANSFER_ONLY</p><p>{c.lv1d}</p></article><article className='mini'><h3>{c.lv2}</h3><p><b>Code:</b> T2_MIDDLE_INTERPRETATION</p><p>{c.lv2d}</p></article><article className='mini'><h3>{c.lv3}</h3><p><b>Code:</b> T3_FINAL_DELIVERY</p><p>{c.lv3d}</p></article></div><div className='status-row'><span>{c.hold}</span><small>(HOLD_REVIEW)</small><span>{c.void}</span><small>(VOID_INTERPRETATION)</small></div></section>
+    <section className='card'><h2>{c.fixedDemo}</h2><p>{c.selectCase}</p><div className='case-grid'>{demoCases.map((item) => <button key={item.id} className={`case-btn ${item.id === selectedCase.id ? 'active' : ''}`} onClick={() => setSelectedCase(item)}>{lang==='zh-TW'?item.zh.btn:item.en.btn}</button>)}</div>
+      <div className='mini'><p><b>{c.doc}：</b>{active.doc}</p><p><b>{c.action}：</b>{active.action}</p><p><b>{c.expected}：</b>{active.expected}</p><h3>{c.closureTitle}</h3>{(Object.keys(active.form) as FieldKey[]).map((k)=><p key={k}><b>{c.fieldLabels[k]}：</b>{active.form[k]}</p>)}</div>
       <button className='btn primary' onClick={() => runDemo(active.form)}>{c.runDemo}</button>
       {result && <div className='result'><p><b>{c.result.required}：</b>{required}</p><p><b>{c.result.decision}：</b>{result.decision} / {result.accessLevel}</p><p><b>{c.result.scores}：</b>{Object.entries(result.scores).map(([k,v])=>`${k}:${v}`).join(' | ')}</p><p><b>{c.result.gaps}：</b>{result.gaps.length ? result.gaps.join(', ') : (lang==='zh-TW'?'無':'none')}</p><p><b>{c.result.explanation}：</b>{result.explanation}</p><p><b>{c.result.audit}：</b>{result.auditId}</p></div>}
       <details className='advanced'><summary>{c.advanced}</summary>{(Object.keys(emptyForm) as FieldKey[]).map((k)=><label key={k}>{c.fieldLabels[k]}<input value={advancedForm[k]} onChange={(e)=>{const n={...advancedForm,[k]:e.target.value};setAdvancedForm(n);save('advanced-form',n);}} /></label>)}<button className='btn' onClick={()=>runDemo(advancedForm)}>{c.runDemo}</button></details>
     </section>
-
     <section className='card'><h2>{c.flowTitle}</h2><p className='flow'>{c.flow}</p></section>
-    <section className='card'><h2>{c.depTitle}</h2><h3>{c.depA}</h3><p>{c.depAText}</p><h3>{c.depB}</h3><pre>git clone https://github.com/HIJO790401/TIRC-Document-Gate.git\ncd TIRC-Document-Gate/demo\nnpm install\nnpm run dev</pre><h3>{c.depC}</h3><p>{c.depCText}</p><pre>docker compose up --build</pre><h3>{c.depD}</h3><pre>cd demo\nnpm run build:pages</pre><p>{c.ghSetting}</p></section>
-
+    <section className='card'><h2>{c.depTitle}</h2><h3>{c.depA}</h3><p>{c.depAText}</p><h3>{c.depB}</h3><pre>git clone https://github.com/HIJO790401/TIRC-Document-Gate.git
+cd TIRC-Document-Gate/demo
+npm install
+npm run dev</pre><h3>{c.depC}</h3><p>{c.depCText}</p><pre>docker compose up --build</pre><h3>{c.depD}</h3><pre>cd demo
+npm run build:pages</pre><p>{c.ghSetting}</p></section>
     <LocalEdition lang={lang} />
-
     <footer className='card footer'><div className='btn-row'><a className='btn primary' href='https://hijo790401.github.io/shen-yao-portal/' target='_blank' rel='noreferrer'>{c.portal}</a><a className='btn' href='https://github.com/HIJO790401/TIRC-Document-Gate' target='_blank' rel='noreferrer'>{c.footerRepo}</a></div><p>Wen-Yao Hsu / Shen-Yao 888π</p><p>許文耀／沈耀888π</p><p>{c.founder}</p></footer>
   </div>;
 }
 
-type LocalProps = { lang: Language };
-function LocalEdition({ lang }: LocalProps) {
+function LocalEdition({ lang }: { lang: Language }) {
   const api = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:8000';
-  const [mode, setMode] = useState<'demo'|'local'>('demo');
-  const [users, setUsers] = useState<any[]>([]);
-  const [actor, setActor] = useState('user1');
-  const [docs, setDocs] = useState<any[]>([]);
+  const [localMode, setLocalMode] = useState(false);
+  const [users, setUsers] = useState<any[]>([]); const [actor, setActor] = useState('user1');
+  const [docs, setDocs] = useState<any[]>([]); const [audits, setAudits] = useState<any[]>([]);
+  const [selectedDoc, setSelectedDoc] = useState(''); const [policy, setPolicy] = useState({t1_transfer_only_actors:'',t2_middle_interpretation_actors:'',t3_final_delivery_actors:'',allow_local_ai:true,allow_external_share:false,require_nda:true,external_allowed_recipients:'',blocked_sections_note:''});
   const [title, setTitle] = useState(''); const [content, setContent] = useState('');
-  const [docId, setDocId] = useState(''); const [result, setResult] = useState<any>(null);
-  const [form, setForm] = useState({subject:'',boundary:'',cause:'',replay:'',repair:'',responsibility:''});
-  const t = lang==='zh-TW' ? {local:'Local Mode（本地版）', switch:'切換模式', importDoc:'文件匯入', list:'文件列表', run:'送出審查', actor:'身份', action:'操作', audit:'審計驗證'} : {local:'Local Mode', switch:'Switch mode', importDoc:'Import Document', list:'Documents', run:'Submit Review', actor:'Actor', action:'Action', audit:'Audit Verify'};
-  const loadUsers = async()=> setUsers(await (await fetch(`${api}/users`)).json());
-  const loadDocs = async()=> setDocs(await (await fetch(`${api}/documents`)).json());
-  const importDoc = async()=>{await fetch(`${api}/documents/import_text`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title,content,classification_level:'Internal',owner:actor,status:'active'})}); await loadDocs();};
-  const request = async()=>{const r=await fetch(`${api}/access/request`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({document_id:docId,actor,action:'summarize',...form})}); setResult(await r.json());};
-  const verify = async()=> alert(JSON.stringify(await (await fetch(`${api}/audit/verify`)).json()));
-  return <section className='card'><h2>{t.local}</h2><button className='btn' onClick={()=>setMode(mode==='demo'?'local':'demo')}>{t.switch}: {mode}</button>{mode==='local' && <>
-    <div className='btn-row'><button className='btn' onClick={loadUsers}>Load Users</button><button className='btn' onClick={loadDocs}>Load Docs</button></div>
-    <p>{t.actor}: <select value={actor} onChange={e=>setActor(e.target.value)}>{users.map(u=><option key={u.username} value={u.username}>{u.username}({u.role})</option>)}</select></p>
-    <h3>{t.importDoc}</h3><input placeholder='title' value={title} onChange={e=>setTitle(e.target.value)} /><textarea value={content} onChange={e=>setContent(e.target.value)} /><button className='btn' onClick={importDoc}>Import</button>
-    <h3>{t.list}</h3><ul>{docs.map(d=><li key={d.document_id}><button className='btn' onClick={()=>setDocId(d.document_id)}>{d.title} {d.hash_12}</button></li>)}</ul>
-    <h3>{t.action}</h3>{Object.keys(form).map(k=><label key={k}>{k}<input value={(form as any)[k]} onChange={e=>setForm({...form,[k]:e.target.value})} /></label>)}
-    <button className='btn primary' onClick={request}>{t.run}</button>{result && <pre>{JSON.stringify(result,null,2)}</pre>}
-    <button className='btn' onClick={verify}>{t.audit}</button>
-  </>}</section>;
+  const [action, setAction] = useState('transfer'); const [llmEnabled, setLlmEnabled] = useState(false); const [ollamaUrl, setOllamaUrl] = useState('http://localhost:11434'); const [modelName, setModelName] = useState('llama3.1:8b');
+  const [form, setForm] = useState({subject:'',boundary:'',cause:'',replay:'',repair:'',responsibility:''}); const [reqResult, setReqResult] = useState<any>(null);
+  const [verifyResult, setVerifyResult] = useState<any>(null);
+  const t = lang==='zh-TW' ? {title:'Local Edition（本地部署版）',toggle:'切換 Local Mode',users:'本地帳號與角色',import:'文件匯入',list:'文件列表',policy:'三層解釋權設定',request:'操作請求',audit:'審計紀錄',llm:'本地模型設定',savePolicy:'儲存 policy',run:'送出審查',verify:'驗證 hash chain',load:'重新載入',doc:'文件',actor:'身份',upload:'上傳檔案',extract:'測試連線/抽取'} : {title:'Local Edition',toggle:'Toggle Local Mode',users:'Local users & roles',import:'Document intake',list:'Document list',policy:'Three-level policy',request:'Operation request',audit:'Audit log',llm:'Local model settings',savePolicy:'Save policy',run:'Submit review',verify:'Verify hash chain',load:'Reload',doc:'Document',actor:'Actor',upload:'Upload file',extract:'Test connection / extract'};
+
+  const fetchUsers=async()=>setUsers(await (await fetch(`${api}/users`)).json());
+  const fetchDocs=async()=>setDocs(await (await fetch(`${api}/documents`)).json());
+  const fetchAudit=async()=>setAudits(await (await fetch(`${api}/audit`)).json());
+  const importText=async()=>{await fetch(`${api}/documents/import_text`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title,content,classification_level:'Internal',owner:actor,status:'active'})}); await fetchDocs();};
+  const uploadFile=async(e:any)=>{const f=e.target.files?.[0]; if(!f) return; const fd=new FormData(); fd.append('file',f); fd.append('owner',actor); fd.append('classification_level','Internal'); fd.append('status','active'); await fetch(`${api}/documents/upload`,{method:'POST',body:fd}); await fetchDocs();};
+  const savePolicyApi=async()=>{if(!selectedDoc) return; await fetch(`${api}/documents/${selectedDoc}/policy?actor=${encodeURIComponent(actor)}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...policy,t1_transfer_only_actors:policy.t1_transfer_only_actors.split(',').map(s=>s.trim()).filter(Boolean),t2_middle_interpretation_actors:policy.t2_middle_interpretation_actors.split(',').map(s=>s.trim()).filter(Boolean),t3_final_delivery_actors:policy.t3_final_delivery_actors.split(',').map(s=>s.trim()).filter(Boolean),external_allowed_recipients:policy.external_allowed_recipients.split(',').map(s=>s.trim()).filter(Boolean)})});};
+  const submitRequest=async()=>{const r=await fetch(`${api}/access/request`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({document_id:selectedDoc,actor,action,...form,auto_extract_with_local_llm:llmEnabled})}); setReqResult(await r.json()); await fetchAudit();};
+  const verify=async()=>setVerifyResult(await (await fetch(`${api}/audit/verify`)).json());
+  const testExtract=async()=>alert(JSON.stringify(await (await fetch(`${api}/local-llm/extract`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({document_id:selectedDoc,actor,action,content})})).json()));
+
+  return <section className='card'><h2>{t.title}</h2><button className='btn' onClick={()=>setLocalMode(!localMode)}>{t.toggle}: {localMode?'ON':'OFF'}</button>
+    {localMode && <>
+      <div className='panel-grid'>
+        <div className='mini'><h3>{t.users}</h3><button className='btn' onClick={fetchUsers}>{t.load}</button><p>{t.actor}<select value={actor} onChange={e=>setActor(e.target.value)}>{users.map(u=><option key={u.username} value={u.username}>{u.username} ({u.role})</option>)}</select></p></div>
+        <div className='mini'><h3>{t.import}</h3><input placeholder='title' value={title} onChange={e=>setTitle(e.target.value)} /><textarea placeholder='content' value={content} onChange={e=>setContent(e.target.value)} /><div className='btn-row'><button className='btn' onClick={importText}>Import Text</button><label className='btn'>{t.upload}<input type='file' style={{display:'none'}} onChange={uploadFile} /></label></div></div>
+      </div>
+      <div className='mini'><h3>{t.list}</h3><button className='btn' onClick={fetchDocs}>{t.load}</button><table><thead><tr><th>ID</th><th>{t.doc}</th><th>Level</th><th>Owner</th><th>Hash12</th><th>Policy</th></tr></thead><tbody>{docs.map(d=><tr key={d.document_id} onClick={()=>setSelectedDoc(d.document_id)}><td>{d.document_id}</td><td>{d.title}</td><td>{d.classification_level}</td><td>{d.owner}</td><td>{d.hash_12}</td><td>{d.policy_status}</td></tr>)}</tbody></table></div>
+      <div className='panel-grid'>
+        <div className='mini'><h3>{t.policy}</h3><p>Doc: {selectedDoc||'-'}</p>
+          <input placeholder='T1 actors comma-separated' value={policy.t1_transfer_only_actors} onChange={e=>setPolicy({...policy,t1_transfer_only_actors:e.target.value})} />
+          <input placeholder='T2 actors comma-separated' value={policy.t2_middle_interpretation_actors} onChange={e=>setPolicy({...policy,t2_middle_interpretation_actors:e.target.value})} />
+          <input placeholder='T3 actors comma-separated' value={policy.t3_final_delivery_actors} onChange={e=>setPolicy({...policy,t3_final_delivery_actors:e.target.value})} />
+          <label><input type='checkbox' checked={policy.allow_local_ai} onChange={e=>setPolicy({...policy,allow_local_ai:e.target.checked})}/>allow_local_ai</label>
+          <label><input type='checkbox' checked={policy.allow_external_share} onChange={e=>setPolicy({...policy,allow_external_share:e.target.checked})}/>allow_external_share</label>
+          <label><input type='checkbox' checked={policy.require_nda} onChange={e=>setPolicy({...policy,require_nda:e.target.checked})}/>require_nda</label>
+          <input placeholder='external allowed recipients comma-separated' value={policy.external_allowed_recipients} onChange={e=>setPolicy({...policy,external_allowed_recipients:e.target.value})} />
+          <input placeholder='blocked sections note' value={policy.blocked_sections_note} onChange={e=>setPolicy({...policy,blocked_sections_note:e.target.value})} />
+          <button className='btn primary' onClick={savePolicyApi}>{t.savePolicy}</button>
+        </div>
+        <div className='mini'><h3>{t.request}</h3><p>{t.doc}: {selectedDoc||'-'}</p><select value={action} onChange={e=>setAction(e.target.value)}><option>transfer</option><option>summarize</option><option>ask local AI</option><option>export</option><option>share external</option><option>final delivery</option></select>{Object.keys(form).map(k=><label key={k}>{k}<input value={(form as any)[k]} onChange={e=>setForm({...form,[k]:e.target.value})} /></label>)}<button className='btn primary' onClick={submitRequest}>{t.run}</button>{reqResult && <pre>{JSON.stringify(reqResult,null,2)}</pre>}</div>
+      </div>
+      <div className='panel-grid'>
+        <div className='mini'><h3>{t.llm}</h3><label><input type='checkbox' checked={llmEnabled} onChange={e=>setLlmEnabled(e.target.checked)} /> enabled</label><input value={ollamaUrl} onChange={e=>setOllamaUrl(e.target.value)} /><input value={modelName} onChange={e=>setModelName(e.target.value)} /><button className='btn' onClick={testExtract}>{t.extract}</button></div>
+        <div className='mini'><h3>{t.audit}</h3><div className='btn-row'><button className='btn' onClick={fetchAudit}>{t.load}</button><button className='btn' onClick={verify}>{t.verify}</button></div>{verifyResult && <pre>{JSON.stringify(verifyResult,null,2)}</pre>}<pre>{JSON.stringify(audits.slice(0,5),null,2)}</pre></div>
+      </div>
+    </>}
+  </section>;
 }

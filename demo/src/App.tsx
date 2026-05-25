@@ -1,174 +1,42 @@
 import { useMemo, useState } from 'react';
 import { evaluateInterpretation } from './lib/iccEngine';
 import { InterpretationInput, InterpretationResult, Language } from './lib/types';
+import { FieldKey, tx } from './lib/i18n';
 
 type FormFields = Omit<InterpretationInput, 'documentId' | 'action' | 'language'>;
-
-type DemoCase = {
-  id: string;
-  level: 'T1_TRANSFER_ONLY' | 'T2_MIDDLE_INTERPRETATION' | 'T3_FINAL_DELIVERY' | 'HOLD_REVIEW' | 'VOID_INTERPRETATION';
-  docId: string;
-  action: string;
-  form: FormFields;
-  expected: string;
-};
+type CaseContent = { doc: string; action: string; expected: string; form: FormFields; btn: string };
+type DemoCase = { id: string; level: InterpretationResult['accessLevel']; zh: CaseContent; en: CaseContent; docId: string; actionKey: string };
 
 const load = <T,>(k: string, d: T): T => JSON.parse(localStorage.getItem(k) || JSON.stringify(d));
 const save = (k: string, v: unknown) => localStorage.setItem(k, JSON.stringify(v));
 
-const docs = {
-  'bank-policy': { en: 'Bank Risk Policy', zh: '銀行風控文件' },
-  'patch-report': { en: 'Security Patch Report', zh: '資安補丁報告' },
-  'poc-nda': { en: 'NDA PoC Report', zh: 'NDA PoC 報告' },
-  'strategy-memo': { en: 'Internal Strategy Memo', zh: '內部策略文件' }
-} as const;
-
 const demoCases: DemoCase[] = [
-  {
-    id: 'case1', level: 'T1_TRANSFER_ONLY', docId: 'bank-policy', action: 'transfer',
-    form: {
-      subject: 'Risk team transfers this document to internal compliance reviewer.',
-      boundary: 'Internal review only; no external disclosure.',
-      cause: 'Compliance needs to confirm document classification.',
-      replay: 'Transfer is logged with document hash and recipient.',
-      repair: 'If sent to wrong recipient, revoke access and notify owner.',
-      responsibility: 'Risk team owner is responsible.'
-    },
-    expected: 'T1_TRANSFER_ONLY or T2_MIDDLE_INTERPRETATION'
-  },
-  {
-    id: 'case2', level: 'T2_MIDDLE_INTERPRETATION', docId: 'patch-report', action: 'summarize',
-    form: {
-      subject: 'Security engineer summarizes the patch impact for internal engineering.',
-      boundary: 'Internal engineering use only; no exploit details shared externally.',
-      cause: 'Engineering needs to understand affected modules.',
-      replay: 'Summary links back to patch report and audit log.',
-      repair: 'Security owner corrects summary if boundary is wrong.',
-      responsibility: 'Security owner and engineering lead share responsibility.'
-    },
-    expected: 'T2_MIDDLE_INTERPRETATION'
-  },
-  {
-    id: 'case3', level: 'T3_FINAL_DELIVERY', docId: 'poc-nda', action: 'final delivery',
-    form: {
-      subject: 'Project owner delivers the NDA-approved PoC report to the named partner.',
-      boundary: 'Only the NDA-approved version may be delivered; internal rule tables remain excluded.',
-      cause: 'Partner has completed NDA review and needs the approved PoC package.',
-      replay: 'Delivery record includes version hash, recipient, timestamp, and approval note.',
-      repair: 'If misused, project owner triggers takedown, correction, and legal follow-up.',
-      responsibility: 'Project owner accepts final delivery responsibility.'
-    },
-    expected: 'T3_FINAL_DELIVERY'
-  },
-  {
-    id: 'case4', level: 'HOLD_REVIEW', docId: 'strategy-memo', action: 'share external',
-    form: {
-      subject: 'Team member wants to share a summary with an outside contact.',
-      boundary: 'Maybe only high-level content, but the exact approved version is unclear.',
-      cause: 'The outside contact may need context.',
-      replay: 'Not sure which version will be sent.',
-      repair: 'Need manager to confirm.',
-      responsibility: 'Responsibility owner is not clearly assigned.'
-    },
-    expected: 'HOLD_REVIEW'
-  },
-  {
-    id: 'case5', level: 'VOID_INTERPRETATION', docId: 'bank-policy', action: 'share external',
-    form: {
-      subject: 'Everyone says this is safe to share.',
-      boundary: 'No clear boundary.',
-      cause: 'Probably useful.',
-      replay: 'No replay.',
-      repair: 'Not sure.',
-      responsibility: 'For reference only.'
-    },
-    expected: 'VOID_INTERPRETATION'
-  }
+  { id: 'case1', level: 'T1_TRANSFER_ONLY', docId: 'bank-policy', actionKey: 'transfer', zh: { btn: '案例一｜只允許移交', doc: '銀行風控文件', action: '移交', expected: '第一層｜只允許移交，或第二層｜中層解釋權', form: { subject: '風控團隊將此文件移交給內部合規審查人員。', boundary: '僅限內部審查，不得對外揭露。', cause: '合規單位需要確認文件分類與使用邊界。', replay: '移交紀錄需包含文件雜湊、接收者與時間戳。', repair: '若誤交給錯誤對象，需撤銷權限並通知文件 owner。', responsibility: '風控團隊 owner 承擔移交責任。' } }, en: { btn: 'Case 1 | Transfer Only', doc: 'Bank Risk Policy', action: 'transfer', expected: 'T1_TRANSFER_ONLY or T2_MIDDLE_INTERPRETATION', form: { subject: 'Risk team transfers this document to an internal compliance reviewer.', boundary: 'Internal review only; no external disclosure.', cause: 'Compliance needs to confirm document classification and usage scope.', replay: 'Transfer record includes file hash, recipient, and timestamp.', repair: 'If sent to a wrong recipient, revoke access and notify the document owner.', responsibility: 'Risk team owner is responsible for this transfer.' } } },
+  { id: 'case2', level: 'T2_MIDDLE_INTERPRETATION', docId: 'patch-report', actionKey: 'summarize', zh: { btn: '案例二｜中層解釋權', doc: '資安補丁報告', action: '摘要', expected: '第二層｜中層解釋權', form: { subject: '資安工程師為內部工程團隊整理補丁影響摘要。', boundary: '僅限內部工程使用，不得對外分享漏洞細節。', cause: '工程團隊需要理解受影響模組與修補優先順序。', replay: '摘要需回連原始補丁報告與審計紀錄。', repair: '若邊界描述錯誤，由資安 owner 修正內容。', responsibility: '資安 owner 與工程主管共同承擔責任。' } }, en: { btn: 'Case 2 | Middle Interpretation', doc: 'Security Patch Report', action: 'summarize', expected: 'T2_MIDDLE_INTERPRETATION', form: { subject: 'Security engineer summarizes patch impact for internal engineering.', boundary: 'For internal engineering only; no exploit details externally.', cause: 'Engineering needs to understand affected modules.', replay: 'Summary links back to patch report and audit log.', repair: 'Security owner corrects summary when boundary is incorrect.', responsibility: 'Security owner and engineering lead share responsibility.' } } },
+  { id: 'case3', level: 'T3_FINAL_DELIVERY', docId: 'poc-nda', actionKey: 'final delivery', zh: { btn: '案例三｜最終交付權', doc: 'NDA PoC 報告', action: '最終交付', expected: '第三層｜最終交付權', form: { subject: '專案 owner 將 NDA 核准版本的 PoC 報告交付給指定合作夥伴。', boundary: '僅可交付 NDA 核准版本，內部規則表不得外流。', cause: '合作夥伴完成 NDA 審查後，需要核准的 PoC 套件。', replay: '交付紀錄需包含版本雜湊、接收者、時間戳與核准註記。', repair: '若被誤用，專案 owner 啟動下架、更正與法務追蹤。', responsibility: '專案 owner 承擔最終交付責任。' } }, en: { btn: 'Case 3 | Final Delivery', doc: 'NDA PoC Report', action: 'final delivery', expected: 'T3_FINAL_DELIVERY', form: { subject: 'Project owner delivers NDA-approved PoC report to the named partner.', boundary: 'Only NDA-approved version may be delivered; internal rule tables are excluded.', cause: 'Partner completed NDA review and needs approved PoC package.', replay: 'Delivery record includes version hash, recipient, timestamp, and approval note.', repair: 'If misused, project owner triggers takedown, correction, and legal follow-up.', responsibility: 'Project owner accepts final delivery responsibility.' } } },
+  { id: 'case4', level: 'HOLD_REVIEW', docId: 'strategy-memo', actionKey: 'share external', zh: { btn: '案例四｜需人工審查', doc: '內部策略文件', action: '對外分享', expected: '需人工審查', form: { subject: '團隊成員想要向外部聯絡人分享摘要。', boundary: '可能只分享高層資訊，但核准版本尚不明確。', cause: '外部聯絡人可能需要背景脈絡。', replay: '目前無法確認將送出的版本。', repair: '需要主管確認後才能處理。', responsibility: '責任歸屬尚未明確指定。' } }, en: { btn: 'Case 4 | Hold Review', doc: 'Internal Strategy Memo', action: 'share external', expected: 'HOLD_REVIEW', form: { subject: 'Team member wants to share a summary with an outside contact.', boundary: 'Maybe only high-level content, but approved version is unclear.', cause: 'The outside contact may need context.', replay: 'Not sure which version will be sent.', repair: 'Manager confirmation is required.', responsibility: 'Responsibility owner is not clearly assigned.' } } },
+  { id: 'case5', level: 'VOID_INTERPRETATION', docId: 'bank-policy', actionKey: 'share external', zh: { btn: '案例五｜解釋無效', doc: '銀行風控文件', action: '對外分享', expected: '解釋無效', form: { subject: '大家都說這份文件可以分享。', boundary: '沒有清楚邊界。', cause: '可能有幫助。', replay: '沒有回放。', repair: '不確定。', responsibility: '僅供參考。' } }, en: { btn: 'Case 5 | Void Interpretation', doc: 'Bank Risk Policy', action: 'share external', expected: 'VOID_INTERPRETATION', form: { subject: 'Everyone says this is safe to share.', boundary: 'No clear boundary.', cause: 'Probably useful.', replay: 'No replay.', repair: 'Not sure.', responsibility: 'For reference only.' } } }
 ];
-
-const copy = {
-  en: {
-    portal: 'Official Portal', repo: 'Download Repo',
-    heroSub: 'Protect confidential documents by checking who can transfer, interpret, and finally deliver their meaning.',
-    heroSub2: 'Not only who can open a file, but who is qualified to transfer, interpret, and deliver its meaning.',
-    why: 'Why',
-    why1: 'Traditional ACL / SSO / MFA only answers whether someone can open a file.',
-    why2: 'TIRC asks: can they transfer it, interpret it, and deliver it externally?',
-    why3: 'This is an interpretation-rights and responsibility-chain layer on top of existing security controls.',
-    rights: 'Three Interpretation Rights',
-    live: 'Fixed Demo',
-    pickCase: 'Pick a demo case',
-    run: 'Run Demo',
-    expected: 'Expected',
-    doc: 'Document', action: 'Action', closure: 'Interpretation Closure Content',
-    required: 'Required Level', decision: 'ICC Decision', scores: 'Closure Scores', gaps: 'Gap Tags', explanation: 'Why this result', audit: 'Audit ID',
-    advanced: 'Advanced: try your own input',
-    how: 'How it works',
-    deploy: 'Deployment',
-    aTitle: 'GitHub Pages Demo',
-    aDesc: 'This page is a static frontend demo using sample data only.',
-    bTitle: 'Download and run locally',
-    cTitle: 'Local deployment for internal use',
-    cDesc: 'For real confidential files, deploy this repository inside your own environment and connect your local or private model. Documents do not need to leave your environment.',
-    dTitle: 'Manual GitHub Pages rebuild',
-    dDesc: 'GitHub Settings → Pages → Deploy from branch → main / docs',
-    footerRole: 'Founder of Semantic Firewall'
-  },
-  'zh-TW': {
-    portal: '官方入口', repo: '下載 Repo',
-    heroSub: '透過檢查誰能移交、解釋、最終交付文件意義，保護機密文件。',
-    heroSub2: '不只檢查誰能打開文件，而是檢查誰有資格移交、解釋、最終交付文件意義。',
-    why: 'Why',
-    why1: '傳統 ACL / SSO / MFA 只回答能不能打開文件。',
-    why2: 'TIRC 追問：能不能移交？能不能解釋？能不能最終對外交付？',
-    why3: '這是加在既有安全框架上的「解釋權與責任鏈」層。',
-    rights: '三重解釋權',
-    live: '固定示範',
-    pickCase: '選擇示範案例',
-    run: '執行示範',
-    expected: '預期',
-    doc: '文件', action: '行為', closure: '解釋閉環內容',
-    required: '需求層級', decision: '判定結果', scores: '閉環分數', gaps: '缺口標記', explanation: '判定說明', audit: '審計 ID',
-    advanced: '進階：自行輸入測試',
-    how: '運作流程',
-    deploy: '部署說明',
-    aTitle: 'GitHub Pages Demo',
-    aDesc: '本頁是純前端靜態示範，只使用範例資料，不處理真實機密文件。',
-    bTitle: 'Download and run locally',
-    cTitle: 'Local deployment for internal use',
-    cDesc: '真正機密文件請企業下載 Repo 後，部署在自己的內部環境，並可接本地模型或私有模型。資料不需要送到外部雲端。',
-    dTitle: 'Manual GitHub Pages rebuild',
-    dDesc: 'GitHub Settings → Pages → Deploy from branch → main / docs',
-    footerRole: '語意防火牆創辦人'
-  }
-} as const;
 
 const emptyForm: FormFields = { subject: '', boundary: '', cause: '', replay: '', repair: '', responsibility: '' };
 
 export function App() {
   const [lang, setLang] = useState<Language>(load('lang', 'zh-TW'));
-  const [selectedCase, setSelectedCase] = useState<DemoCase>(demoCases[0]);
-  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [selectedCase, setSelectedCase] = useState(demoCases[0]);
   const [advancedForm, setAdvancedForm] = useState<FormFields>(load('advanced-form', emptyForm));
   const [result, setResult] = useState<InterpretationResult | null>(null);
+  const c = tx(lang);
+  const active = lang === 'zh-TW' ? selectedCase.zh : selectedCase.en;
 
-  const c = copy[lang];
   const required = useMemo(() => {
-    const action = selectedCase.action;
+    const action = selectedCase.actionKey;
     if (action.includes('final') || action.includes('external')) return 'T3_FINAL_DELIVERY';
     if (action.includes('summarize') || action.includes('ask')) return 'T2_MIDDLE_INTERPRETATION';
     return 'T1_TRANSFER_ONLY';
-  }, [selectedCase.action]);
+  }, [selectedCase.actionKey]);
 
-  const runCase = () => {
-    const res = evaluateInterpretation({ documentId: selectedCase.docId, action: selectedCase.action, language: lang, ...selectedCase.form });
-    setResult(res);
-    const logs = load<InterpretationResult[]>('audit', []);
-    save('audit', [res, ...logs].slice(0, 20));
-  };
-
-  const runAdvanced = () => {
-    const res = evaluateInterpretation({ documentId: selectedCase.docId, action: selectedCase.action, language: lang, ...advancedForm });
+  const runDemo = (form: FormFields) => {
+    const res = evaluateInterpretation({ documentId: selectedCase.docId, action: selectedCase.actionKey, language: lang, ...form });
     setResult(res);
     const logs = load<InterpretationResult[]>('audit', []);
     save('audit', [res, ...logs].slice(0, 20));
@@ -176,70 +44,39 @@ export function App() {
 
   return <div className='page'>
     <header className='hero card'>
-      <div className='lang-wrap'><button className='lang-btn' onClick={() => { const n: Language = lang === 'zh-TW' ? 'en' : 'zh-TW'; setLang(n); save('lang', n); }}>{lang === 'zh-TW' ? 'English' : '繁體中文'}</button></div>
-      <h1>TIRC Document Gate<br />三重解釋權文件防火牆</h1>
-      <p>{c.heroSub}</p><p>{c.heroSub2}</p>
-      <div className='btn-row'>
-        <a className='btn primary' href='https://hijo790401.github.io/shen-yao-portal/' target='_blank' rel='noreferrer'>{c.portal}</a>
-        <a className='btn' href='https://github.com/HIJO790401/TIRC-Document-Gate' target='_blank' rel='noreferrer'>{c.repo}</a>
-      </div>
+      <div className='lang-wrap'><button className='lang-btn' onClick={() => { const n: Language = lang === 'zh-TW' ? 'en' : 'zh-TW'; setLang(n); save('lang', n); }}>{c.langSwitch}</button></div>
+      <h1>{c.heroTitleEn}<br />{c.heroTitleZh}</h1>
+      <p>{c.heroSubtitle}</p><p>{c.heroNote}</p>
+      <div className='btn-row'><a className='btn primary' href='https://hijo790401.github.io/shen-yao-portal/' target='_blank' rel='noreferrer'>{c.portal}</a><a className='btn' href='https://github.com/HIJO790401/TIRC-Document-Gate' target='_blank' rel='noreferrer'>{c.repo}</a></div>
     </header>
 
-    <section className='card'><h2>{c.why}</h2><p>{c.why1}</p><p>{c.why2}</p><p>{c.why3}</p></section>
+    <section className='card'><h2>{c.whyTitle}</h2><p>{c.why1}</p><p>{c.why2}</p><p>{c.why3}</p></section>
 
-    <section className='card'><h2>{c.rights}</h2><div className='grid3'>
-      <article className='mini'><h3>T1_TRANSFER_ONLY</h3><p>{lang==='zh-TW'?'只允許移交，不允許解釋內容。':'Transfer only. No content interpretation.'}</p></article>
-      <article className='mini'><h3>T2_MIDDLE_INTERPRETATION</h3><p>{lang==='zh-TW'?'允許內部摘要、協作、處理，不可對外交付。':'Internal summarize/collaboration allowed. No external final delivery.'}</p></article>
-      <article className='mini'><h3>T3_FINAL_DELIVERY</h3><p>{lang==='zh-TW'?'允許最終交付，必須具備完整責任閉環。':'Final delivery allowed only with full responsibility closure.'}</p></article>
-    </div><div className='status-row'><span>HOLD_REVIEW</span><small>{lang==='zh-TW'?'需人工審查':'Manual review required'}</small><span>VOID_INTERPRETATION</span><small>{lang==='zh-TW'?'解釋無效':'Interpretation invalid'}</small></div></section>
+    <section className='card'><h2>{c.rightsTitle}</h2><div className='grid3'>
+      <article className='mini'><h3>{c.lv1}</h3><p><b>Code:</b> T1_TRANSFER_ONLY</p><p>{c.lv1d}</p></article>
+      <article className='mini'><h3>{c.lv2}</h3><p><b>Code:</b> T2_MIDDLE_INTERPRETATION</p><p>{c.lv2d}</p></article>
+      <article className='mini'><h3>{c.lv3}</h3><p><b>Code:</b> T3_FINAL_DELIVERY</p><p>{c.lv3d}</p></article>
+    </div><div className='status-row'><span>{c.hold}</span><small>(HOLD_REVIEW)</small><span>{c.void}</span><small>(VOID_INTERPRETATION)</small></div></section>
 
     <section className='card'>
-      <h2>{c.live}</h2>
-      <p>{c.pickCase}</p>
-      <div className='case-row'>
-        {demoCases.map((item, idx) => <button key={item.id} className={`case-btn ${item.id===selectedCase.id?'active':''}`} onClick={() => setSelectedCase(item)}>CASE {idx + 1}｜{item.level}</button>)}
-      </div>
+      <h2>{c.fixedDemo}</h2><p>{c.selectCase}</p>
+      <div className='case-grid'>{demoCases.map((item, i) => <button key={item.id} className={`case-btn ${item.id === selectedCase.id ? 'active' : ''}`} onClick={() => setSelectedCase(item)}>{(lang==='zh-TW'?item.zh.btn:item.en.btn) || c.caseNames[i]}</button>)}</div>
       <div className='mini'>
-        <p><b>{c.doc}:</b> {docs[selectedCase.docId as keyof typeof docs][lang === 'zh-TW' ? 'zh' : 'en']}</p>
-        <p><b>{c.action}:</b> {selectedCase.action}</p>
-        <p><b>{c.expected}:</b> {selectedCase.expected}</p>
-        <h3>{c.closure}</h3>
-        {Object.entries(selectedCase.form).map(([k, v]) => <p key={k}><b>{k}:</b> {v}</p>)}
+        <p><b>{c.doc}：</b>{active.doc}</p><p><b>{c.action}：</b>{active.action}</p><p><b>{c.expected}：</b>{active.expected}</p><h3>{c.closureTitle}</h3>
+        {(Object.keys(active.form) as FieldKey[]).map((k)=><p key={k}><b>{c.fieldLabels[k]}：</b>{active.form[k]}</p>)}
       </div>
-      <button className='btn primary' onClick={runCase}>{c.run}</button>
-
-      {result && <div className='result'>
-        <p><b>{c.required}:</b> {required}</p>
-        <p><b>{c.decision}:</b> {result.decision} / {result.accessLevel}</p>
-        <p><b>{c.scores}:</b> {Object.entries(result.scores).map(([k,v]) => `${k}:${v}`).join(' | ')}</p>
-        <p><b>{c.gaps}:</b> {result.gaps.length ? result.gaps.join(', ') : 'none'}</p>
-        <p><b>{c.explanation}:</b> {result.explanation}</p>
-        <p><b>{c.audit}:</b> {result.auditId}</p>
-      </div>}
-
-      <details className='advanced' open={advancedOpen} onToggle={(e) => setAdvancedOpen((e.target as HTMLDetailsElement).open)}>
-        <summary>{c.advanced}</summary>
-        {(['subject','boundary','cause','replay','repair','responsibility'] as (keyof FormFields)[]).map((k) => (
-          <label key={k}>{k}<input value={advancedForm[k]} onChange={(e) => { const next = { ...advancedForm, [k]: e.target.value }; setAdvancedForm(next); save('advanced-form', next); }} /></label>
-        ))}
-        <button className='btn' onClick={runAdvanced}>{c.run}</button>
-      </details>
+      <button className='btn primary' onClick={() => runDemo(active.form)}>{c.runDemo}</button>
+      {result && <div className='result'><p><b>{c.result.required}：</b>{required}</p><p><b>{c.result.decision}：</b>{result.decision} / {result.accessLevel}</p><p><b>{c.result.scores}：</b>{Object.entries(result.scores).map(([k,v])=>`${k}:${v}`).join(' | ')}</p><p><b>{c.result.gaps}：</b>{result.gaps.length ? result.gaps.join(', ') : (lang==='zh-TW'?'無':'none')}</p><p><b>{c.result.explanation}：</b>{result.explanation}</p><p><b>{c.result.audit}：</b>{result.auditId}</p></div>}
+      <details className='advanced'><summary>{c.advanced}</summary>{(Object.keys(emptyForm) as FieldKey[]).map((k)=><label key={k}>{c.fieldLabels[k]}<input value={advancedForm[k]} onChange={(e)=>{const n={...advancedForm,[k]:e.target.value};setAdvancedForm(n);save('advanced-form',n);}} /></label>)}<button className='btn' onClick={()=>runDemo(advancedForm)}>{c.runDemo}</button></details>
     </section>
 
-    <section className='card'><h2>{c.how}</h2><p className='flow'>File / 文件 → Existing access control / 既有權限 → TIRC interpretation rights / 三重解釋權 → ICC closure check / 解釋閉環檢查 → T1/T2/T3/HOLD/VOID → Audit log / 審計紀錄</p></section>
-
-    <section className='card'>
-      <h2>{c.deploy}</h2>
-      <h3>A. {c.aTitle}</h3><p>{c.aDesc}</p>
-      <h3>B. {c.bTitle}</h3><pre>git clone https://github.com/HIJO790401/TIRC-Document-Gate.git
+    <section className='card'><h2>{c.flowTitle}</h2><p className='flow'>{c.flow}</p></section>
+    <section className='card'><h2>{c.depTitle}</h2><h3>{c.depA}</h3><p>{c.depAText}</p><h3>{c.depB}</h3><pre>git clone https://github.com/HIJO790401/TIRC-Document-Gate.git
 cd TIRC-Document-Gate/demo
 npm install
-npm run dev</pre>
-      <h3>C. {c.cTitle}</h3><p>{c.cDesc}</p><pre>docker compose up --build</pre>
-      <h3>D. {c.dTitle}</h3><pre>cd demo
-npm run build:pages</pre><p>{c.dDesc}</p>
-    </section>
+npm run dev</pre><h3>{c.depC}</h3><p>{c.depCText}</p><pre>docker compose up --build</pre><h3>{c.depD}</h3><pre>cd demo
+npm run build:pages</pre><p>{c.ghSetting}</p></section>
 
-    <footer className='card footer'><div className='btn-row'><a className='btn primary' href='https://hijo790401.github.io/shen-yao-portal/' target='_blank' rel='noreferrer'>{c.portal}</a><a className='btn' href='https://github.com/HIJO790401/TIRC-Document-Gate' target='_blank' rel='noreferrer'>GitHub Repo</a></div><p>Wen-Yao Hsu / Shen-Yao 888π</p><p>Founder of Semantic Firewall</p><p>許文耀／沈耀888π</p><p>{c.footerRole}</p></footer>
+    <footer className='card footer'><div className='btn-row'><a className='btn primary' href='https://hijo790401.github.io/shen-yao-portal/' target='_blank' rel='noreferrer'>{c.portal}</a><a className='btn' href='https://github.com/HIJO790401/TIRC-Document-Gate' target='_blank' rel='noreferrer'>{c.footerRepo}</a></div><p>Wen-Yao Hsu / Shen-Yao 888π</p><p>許文耀／沈耀888π</p><p>{c.founder}</p></footer>
   </div>;
 }

@@ -592,5 +592,9 @@ GitHub / GitLab connector
 Enterprise DLP integration
 
 Windows / Mac endpoint agent
+Wen-Yao Hsu / Shen-Yao 888π
 
+許文耀／沈耀888π
+
+Founder of Semantic Firewall
 

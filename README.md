@@ -40,6 +40,7 @@ Optional local model mode:
 ```bash
 LOCAL_LLM_ENABLED=true docker compose --profile llm up --build
 ```
+GitHub Settings → Pages → Deploy from branch → `main` / `docs`
 
 ## Key APIs
 - `GET /health`

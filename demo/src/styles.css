@@ -23,3 +23,5 @@ input, select { width: 100%; margin-top: 4px; border-radius: 8px; border: 1px so
 pre { background: #0b1220; border: 1px solid #334155; padding: 10px; border-radius: 10px; overflow-x: auto; }
 .footer { text-align: center; }
 @media (max-width: 900px) { .grid3, .demo-grid { grid-template-columns: 1fr; } }
+
+textarea { width:100%; min-height:100px; margin-top:4px; border-radius:8px; border:1px solid #334155; background:#0b1220; color:#e5e7eb; padding:8px; }

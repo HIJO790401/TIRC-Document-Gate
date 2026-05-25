@@ -71,12 +71,37 @@ export function App() {
     </section>
 
     <section className='card'><h2>{c.flowTitle}</h2><p className='flow'>{c.flow}</p></section>
-    <section className='card'><h2>{c.depTitle}</h2><h3>{c.depA}</h3><p>{c.depAText}</p><h3>{c.depB}</h3><pre>git clone https://github.com/HIJO790401/TIRC-Document-Gate.git
-cd TIRC-Document-Gate/demo
-npm install
-npm run dev</pre><h3>{c.depC}</h3><p>{c.depCText}</p><pre>docker compose up --build</pre><h3>{c.depD}</h3><pre>cd demo
-npm run build:pages</pre><p>{c.ghSetting}</p></section>
+    <section className='card'><h2>{c.depTitle}</h2><h3>{c.depA}</h3><p>{c.depAText}</p><h3>{c.depB}</h3><pre>git clone https://github.com/HIJO790401/TIRC-Document-Gate.git\ncd TIRC-Document-Gate/demo\nnpm install\nnpm run dev</pre><h3>{c.depC}</h3><p>{c.depCText}</p><pre>docker compose up --build</pre><h3>{c.depD}</h3><pre>cd demo\nnpm run build:pages</pre><p>{c.ghSetting}</p></section>
+
+    <LocalEdition lang={lang} />
 
     <footer className='card footer'><div className='btn-row'><a className='btn primary' href='https://hijo790401.github.io/shen-yao-portal/' target='_blank' rel='noreferrer'>{c.portal}</a><a className='btn' href='https://github.com/HIJO790401/TIRC-Document-Gate' target='_blank' rel='noreferrer'>{c.footerRepo}</a></div><p>Wen-Yao Hsu / Shen-Yao 888π</p><p>許文耀／沈耀888π</p><p>{c.founder}</p></footer>
   </div>;
+}
+
+type LocalProps = { lang: Language };
+function LocalEdition({ lang }: LocalProps) {
+  const api = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:8000';
+  const [mode, setMode] = useState<'demo'|'local'>('demo');
+  const [users, setUsers] = useState<any[]>([]);
+  const [actor, setActor] = useState('user1');
+  const [docs, setDocs] = useState<any[]>([]);
+  const [title, setTitle] = useState(''); const [content, setContent] = useState('');
+  const [docId, setDocId] = useState(''); const [result, setResult] = useState<any>(null);
+  const [form, setForm] = useState({subject:'',boundary:'',cause:'',replay:'',repair:'',responsibility:''});
+  const t = lang==='zh-TW' ? {local:'Local Mode（本地版）', switch:'切換模式', importDoc:'文件匯入', list:'文件列表', run:'送出審查', actor:'身份', action:'操作', audit:'審計驗證'} : {local:'Local Mode', switch:'Switch mode', importDoc:'Import Document', list:'Documents', run:'Submit Review', actor:'Actor', action:'Action', audit:'Audit Verify'};
+  const loadUsers = async()=> setUsers(await (await fetch(`${api}/users`)).json());
+  const loadDocs = async()=> setDocs(await (await fetch(`${api}/documents`)).json());
+  const importDoc = async()=>{await fetch(`${api}/documents/import_text`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title,content,classification_level:'Internal',owner:actor,status:'active'})}); await loadDocs();};
+  const request = async()=>{const r=await fetch(`${api}/access/request`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({document_id:docId,actor,action:'summarize',...form})}); setResult(await r.json());};
+  const verify = async()=> alert(JSON.stringify(await (await fetch(`${api}/audit/verify`)).json()));
+  return <section className='card'><h2>{t.local}</h2><button className='btn' onClick={()=>setMode(mode==='demo'?'local':'demo')}>{t.switch}: {mode}</button>{mode==='local' && <>
+    <div className='btn-row'><button className='btn' onClick={loadUsers}>Load Users</button><button className='btn' onClick={loadDocs}>Load Docs</button></div>
+    <p>{t.actor}: <select value={actor} onChange={e=>setActor(e.target.value)}>{users.map(u=><option key={u.username} value={u.username}>{u.username}({u.role})</option>)}</select></p>
+    <h3>{t.importDoc}</h3><input placeholder='title' value={title} onChange={e=>setTitle(e.target.value)} /><textarea value={content} onChange={e=>setContent(e.target.value)} /><button className='btn' onClick={importDoc}>Import</button>
+    <h3>{t.list}</h3><ul>{docs.map(d=><li key={d.document_id}><button className='btn' onClick={()=>setDocId(d.document_id)}>{d.title} {d.hash_12}</button></li>)}</ul>
+    <h3>{t.action}</h3>{Object.keys(form).map(k=><label key={k}>{k}<input value={(form as any)[k]} onChange={e=>setForm({...form,[k]:e.target.value})} /></label>)}
+    <button className='btn primary' onClick={request}>{t.run}</button>{result && <pre>{JSON.stringify(result,null,2)}</pre>}
+    <button className='btn' onClick={verify}>{t.audit}</button>
+  </>}</section>;
 }

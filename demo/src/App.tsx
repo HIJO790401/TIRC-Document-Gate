@@ -58,51 +58,77 @@ npm run build:pages</pre><p>{c.ghSetting}</p></section>
 
 function LocalEdition({ lang }: { lang: Language }) {
   const api = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:8000';
-  const [localMode, setLocalMode] = useState(false);
-  const [users, setUsers] = useState<any[]>([]); const [actor, setActor] = useState('user1');
-  const [docs, setDocs] = useState<any[]>([]); const [audits, setAudits] = useState<any[]>([]);
-  const [selectedDoc, setSelectedDoc] = useState(''); const [policy, setPolicy] = useState({t1_transfer_only_actors:'',t2_middle_interpretation_actors:'',t3_final_delivery_actors:'',allow_local_ai:true,allow_external_share:false,require_nda:true,external_allowed_recipients:'',blocked_sections_note:''});
+  const zh = lang === 'zh-TW';
+  const t = zh ? {
+    title: 'V1 Local Edition 操作台',
+    sections: ['1) 身份流程','2) 匯入文件','3) 文件列表','4) 三層解釋權設定','5) 送審','6) 判定結果','7) 審計紀錄','8) 本地模型狀態'],
+    load: '重新載入', bind: '綁定身份', actor: '目前操作者', owner: '文件 owner',
+    importText: '匯入文字文件', upload: '上傳檔案',
+    setPolicy: '儲存三層政策', submit: '送審', verify: '驗證 hash-chain', exportJson: '匯出 JSON',
+    verifyOk: '驗證成功：hash-chain 完整', verifyBad: '驗證失敗：hash-chain 斷裂',
+    modelOn: '已啟用', modelOff: '未啟用'
+  } : {
+    title: 'V1 Local Edition Console',
+    sections: ['1) Identity Flow','2) Import Document','3) Document List','4) Three-Level Policy','5) Submit Review','6) Decision Result','7) Audit Log','8) Local Model Status'],
+    load: 'Reload', bind: 'Bind identity', actor: 'Current actor', owner: 'Document owner',
+    importText: 'Import text document', upload: 'Upload file',
+    setPolicy: 'Save policy', submit: 'Submit review', verify: 'Verify hash-chain', exportJson: 'Export JSON',
+    verifyOk: 'Verification passed: hash-chain intact', verifyBad: 'Verification failed: hash-chain broken',
+    modelOn: 'Enabled', modelOff: 'Disabled'
+  };
+
+  const [users, setUsers] = useState<any[]>([]);
+  const [docs, setDocs] = useState<any[]>([]);
+  const [audits, setAudits] = useState<any[]>([]);
+  const [actor, setActor] = useState('user1');
+  const [owner, setOwner] = useState('owner1');
+  const [selectedDoc, setSelectedDoc] = useState('');
   const [title, setTitle] = useState(''); const [content, setContent] = useState('');
-  const [action, setAction] = useState('transfer'); const [llmEnabled, setLlmEnabled] = useState(false); const [ollamaUrl, setOllamaUrl] = useState('http://localhost:11434'); const [modelName, setModelName] = useState('llama3.1:8b');
-  const [form, setForm] = useState({subject:'',boundary:'',cause:'',replay:'',repair:'',responsibility:''}); const [reqResult, setReqResult] = useState<any>(null);
+  const [policy, setPolicy] = useState<any>({ t1_transfer_only_actors: [], t2_middle_interpretation_actors: [], t3_final_delivery_actors: [], allow_local_ai: true, allow_external_share: false, require_nda: true, external_allowed_recipients: [], blocked_sections_note: '' });
+  const [action, setAction] = useState('transfer');
+  const [form, setForm] = useState({ subject: '', boundary: '', cause: '', replay: '', repair: '', responsibility: '' });
+  const [reqResult, setReqResult] = useState<any>(null);
   const [verifyResult, setVerifyResult] = useState<any>(null);
-  const t = lang==='zh-TW' ? {title:'Local Edition（本地部署版）',toggle:'切換 Local Mode',users:'本地帳號與角色',import:'文件匯入',list:'文件列表',policy:'三層解釋權設定',request:'操作請求',audit:'審計紀錄',llm:'本地模型設定',savePolicy:'儲存 policy',run:'送出審查',verify:'驗證 hash chain',load:'重新載入',doc:'文件',actor:'身份',upload:'上傳檔案',extract:'測試連線/抽取'} : {title:'Local Edition',toggle:'Toggle Local Mode',users:'Local users & roles',import:'Document intake',list:'Document list',policy:'Three-level policy',request:'Operation request',audit:'Audit log',llm:'Local model settings',savePolicy:'Save policy',run:'Submit review',verify:'Verify hash chain',load:'Reload',doc:'Document',actor:'Actor',upload:'Upload file',extract:'Test connection / extract'};
+  const [auditActorFilter, setAuditActorFilter] = useState('');
+  const [auditDocFilter, setAuditDocFilter] = useState('');
+  const [health, setHealth] = useState<any>(null);
 
-  const fetchUsers=async()=>setUsers(await (await fetch(`${api}/users`)).json());
-  const fetchDocs=async()=>setDocs(await (await fetch(`${api}/documents`)).json());
-  const fetchAudit=async()=>setAudits(await (await fetch(`${api}/audit`)).json());
-  const importText=async()=>{await fetch(`${api}/documents/import_text`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title,content,classification_level:'Internal',owner:actor,status:'active'})}); await fetchDocs();};
-  const uploadFile=async(e:any)=>{const f=e.target.files?.[0]; if(!f) return; const fd=new FormData(); fd.append('file',f); fd.append('owner',actor); fd.append('classification_level','Internal'); fd.append('status','active'); await fetch(`${api}/documents/upload`,{method:'POST',body:fd}); await fetchDocs();};
-  const savePolicyApi=async()=>{if(!selectedDoc) return; await fetch(`${api}/documents/${selectedDoc}/policy?actor=${encodeURIComponent(actor)}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...policy,t1_transfer_only_actors:policy.t1_transfer_only_actors.split(',').map(s=>s.trim()).filter(Boolean),t2_middle_interpretation_actors:policy.t2_middle_interpretation_actors.split(',').map(s=>s.trim()).filter(Boolean),t3_final_delivery_actors:policy.t3_final_delivery_actors.split(',').map(s=>s.trim()).filter(Boolean),external_allowed_recipients:policy.external_allowed_recipients.split(',').map(s=>s.trim()).filter(Boolean)})});};
-  const submitRequest=async()=>{const r=await fetch(`${api}/access/request`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({document_id:selectedDoc,actor,action,...form,auto_extract_with_local_llm:llmEnabled})}); setReqResult(await r.json()); await fetchAudit();};
-  const verify=async()=>setVerifyResult(await (await fetch(`${api}/audit/verify`)).json());
-  const testExtract=async()=>alert(JSON.stringify(await (await fetch(`${api}/local-llm/extract`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({document_id:selectedDoc,actor,action,content})})).json()));
+  const fetchUsers = async () => setUsers(await (await fetch(`${api}/users`)).json());
+  const fetchDocs = async () => setDocs(await (await fetch(`${api}/documents`)).json());
+  const fetchHealth = async () => setHealth(await (await fetch(`${api}/health`)).json());
+  const fetchAudit = async () => {
+    const q = new URLSearchParams();
+    if (auditActorFilter) q.set('actor', auditActorFilter);
+    if (auditDocFilter) q.set('document_id', auditDocFilter);
+    setAudits(await (await fetch(`${api}/audit?${q.toString()}`)).json());
+  };
+  const bindDocOwner = async () => {
+    if (!selectedDoc) return;
+    const d = await (await fetch(`${api}/documents/${selectedDoc}`)).json();
+    setOwner(d.owner);
+    const p = await (await fetch(`${api}/documents/${selectedDoc}/policy`)).json();
+    if (p && Object.keys(p).length) setPolicy(p);
+  };
+  const importText = async () => { await fetch(`${api}/documents/import_text`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title, content, classification_level: 'Internal', owner, status: 'active' }) }); await fetchDocs(); };
+  const uploadFile = async (e: any) => { const f = e.target.files?.[0]; if (!f) return; const fd = new FormData(); fd.append('file', f); fd.append('owner', owner); fd.append('classification_level', 'Internal'); fd.append('status', 'active'); await fetch(`${api}/documents/upload`, { method: 'POST', body: fd }); await fetchDocs(); };
+  const savePolicyApi = async () => { if (!selectedDoc) return; await fetch(`${api}/documents/${selectedDoc}/policy?actor=${encodeURIComponent(owner)}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(policy) }); };
+  const submitRequest = async () => { const r = await fetch(`${api}/access/request`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ document_id: selectedDoc, actor, action, ...form }) }); setReqResult(await r.json()); await fetchAudit(); };
+  const verify = async () => setVerifyResult(await (await fetch(`${api}/audit/verify`)).json());
 
-  return <section className='card'><h2>{t.title}</h2><button className='btn' onClick={()=>setLocalMode(!localMode)}>{t.toggle}: {localMode?'ON':'OFF'}</button>
-    {localMode && <>
-      <div className='panel-grid'>
-        <div className='mini'><h3>{t.users}</h3><button className='btn' onClick={fetchUsers}>{t.load}</button><p>{t.actor}<select value={actor} onChange={e=>setActor(e.target.value)}>{users.map(u=><option key={u.username} value={u.username}>{u.username} ({u.role})</option>)}</select></p></div>
-        <div className='mini'><h3>{t.import}</h3><input placeholder='title' value={title} onChange={e=>setTitle(e.target.value)} /><textarea placeholder='content' value={content} onChange={e=>setContent(e.target.value)} /><div className='btn-row'><button className='btn' onClick={importText}>Import Text</button><label className='btn'>{t.upload}<input type='file' style={{display:'none'}} onChange={uploadFile} /></label></div></div>
-      </div>
-      <div className='mini'><h3>{t.list}</h3><button className='btn' onClick={fetchDocs}>{t.load}</button><table><thead><tr><th>ID</th><th>{t.doc}</th><th>Level</th><th>Owner</th><th>Hash12</th><th>Policy</th></tr></thead><tbody>{docs.map(d=><tr key={d.document_id} onClick={()=>setSelectedDoc(d.document_id)}><td>{d.document_id}</td><td>{d.title}</td><td>{d.classification_level}</td><td>{d.owner}</td><td>{d.hash_12}</td><td>{d.policy_status}</td></tr>)}</tbody></table></div>
-      <div className='panel-grid'>
-        <div className='mini'><h3>{t.policy}</h3><p>Doc: {selectedDoc||'-'}</p>
-          <input placeholder='T1 actors comma-separated' value={policy.t1_transfer_only_actors} onChange={e=>setPolicy({...policy,t1_transfer_only_actors:e.target.value})} />
-          <input placeholder='T2 actors comma-separated' value={policy.t2_middle_interpretation_actors} onChange={e=>setPolicy({...policy,t2_middle_interpretation_actors:e.target.value})} />
-          <input placeholder='T3 actors comma-separated' value={policy.t3_final_delivery_actors} onChange={e=>setPolicy({...policy,t3_final_delivery_actors:e.target.value})} />
-          <label><input type='checkbox' checked={policy.allow_local_ai} onChange={e=>setPolicy({...policy,allow_local_ai:e.target.checked})}/>allow_local_ai</label>
-          <label><input type='checkbox' checked={policy.allow_external_share} onChange={e=>setPolicy({...policy,allow_external_share:e.target.checked})}/>allow_external_share</label>
-          <label><input type='checkbox' checked={policy.require_nda} onChange={e=>setPolicy({...policy,require_nda:e.target.checked})}/>require_nda</label>
-          <input placeholder='external allowed recipients comma-separated' value={policy.external_allowed_recipients} onChange={e=>setPolicy({...policy,external_allowed_recipients:e.target.value})} />
-          <input placeholder='blocked sections note' value={policy.blocked_sections_note} onChange={e=>setPolicy({...policy,blocked_sections_note:e.target.value})} />
-          <button className='btn primary' onClick={savePolicyApi}>{t.savePolicy}</button>
-        </div>
-        <div className='mini'><h3>{t.request}</h3><p>{t.doc}: {selectedDoc||'-'}</p><select value={action} onChange={e=>setAction(e.target.value)}><option>transfer</option><option>summarize</option><option>ask local AI</option><option>export</option><option>share external</option><option>final delivery</option></select>{Object.keys(form).map(k=><label key={k}>{k}<input value={(form as any)[k]} onChange={e=>setForm({...form,[k]:e.target.value})} /></label>)}<button className='btn primary' onClick={submitRequest}>{t.run}</button>{reqResult && <pre>{JSON.stringify(reqResult,null,2)}</pre>}</div>
-      </div>
-      <div className='panel-grid'>
-        <div className='mini'><h3>{t.llm}</h3><label><input type='checkbox' checked={llmEnabled} onChange={e=>setLlmEnabled(e.target.checked)} /> enabled</label><input value={ollamaUrl} onChange={e=>setOllamaUrl(e.target.value)} /><input value={modelName} onChange={e=>setModelName(e.target.value)} /><button className='btn' onClick={testExtract}>{t.extract}</button></div>
-        <div className='mini'><h3>{t.audit}</h3><div className='btn-row'><button className='btn' onClick={fetchAudit}>{t.load}</button><button className='btn' onClick={verify}>{t.verify}</button></div>{verifyResult && <pre>{JSON.stringify(verifyResult,null,2)}</pre>}<pre>{JSON.stringify(audits.slice(0,5),null,2)}</pre></div>
-      </div>
-    </>}
-  </section>;
+  const toggleActor = (k: 't1_transfer_only_actors' | 't2_middle_interpretation_actors' | 't3_final_delivery_actors', u: string) => setPolicy((p: any) => ({ ...p, [k]: p[k].includes(u) ? p[k].filter((x: string) => x !== u) : [...p[k], u] }));
+
+  return <section className='card'><h2>{t.title}</h2><div className='v1-grid'>
+    <div className='mini'><h3>{t.sections[0]}</h3><button className='btn' onClick={async()=>{await fetchUsers(); await fetchHealth();}}>{t.load}</button><label>{t.actor}<select value={actor} onChange={e=>setActor(e.target.value)}>{users.map(u=><option key={u.username} value={u.username}>{u.username} ({u.role})</option>)}</select></label><label>{t.owner}<select value={owner} onChange={e=>setOwner(e.target.value)}>{users.filter(u=>['owner','admin'].includes(u.role)).map(u=><option key={u.username} value={u.username}>{u.username} ({u.role})</option>)}</select></label></div>
+    <div className='mini'><h3>{t.sections[1]}</h3><input placeholder='title' value={title} onChange={e=>setTitle(e.target.value)} /><textarea placeholder='content' value={content} onChange={e=>setContent(e.target.value)} /><div className='btn-row'><button className='btn' onClick={importText}>{t.importText}</button><label className='btn'>{t.upload}<input type='file' style={{display:'none'}} onChange={uploadFile} /></label></div></div>
+    <div className='mini'><h3>{t.sections[2]}</h3><button className='btn' onClick={fetchDocs}>{t.load}</button><table><thead><tr><th>ID</th><th>Title</th><th>Owner</th><th>Status</th><th>Policy</th><th></th></tr></thead><tbody>{docs.map(d=><tr key={d.document_id}><td>{d.document_id}</td><td>{d.title}</td><td>{d.owner}</td><td>{d.status}</td><td>{d.policy_status}</td><td><button className='btn' onClick={async()=>{setSelectedDoc(d.document_id); await bindDocOwner();}}>{t.bind}</button></td></tr>)}</tbody></table><p>{selectedDoc || '-'}</p></div>
+    <div className='mini'><h3>{t.sections[3]}</h3>
+      <p>T1</p>{users.map(u=><label key={`t1-${u.username}`}><input type='checkbox' checked={policy.t1_transfer_only_actors.includes(u.username)} onChange={()=>toggleActor('t1_transfer_only_actors',u.username)} />{u.username}</label>)}
+      <p>T2</p>{users.map(u=><label key={`t2-${u.username}`}><input type='checkbox' checked={policy.t2_middle_interpretation_actors.includes(u.username)} onChange={()=>toggleActor('t2_middle_interpretation_actors',u.username)} />{u.username}</label>)}
+      <p>T3</p>{users.map(u=><label key={`t3-${u.username}`}><input type='checkbox' checked={policy.t3_final_delivery_actors.includes(u.username)} onChange={()=>toggleActor('t3_final_delivery_actors',u.username)} />{u.username}</label>)}
+      <button className='btn primary' onClick={savePolicyApi}>{t.setPolicy}</button></div>
+    <div className='mini'><h3>{t.sections[4]}</h3><select value={action} onChange={e=>setAction(e.target.value)}><option>transfer</option><option>summarize</option><option>ask local AI</option><option>export</option><option>share external</option><option>final delivery</option></select>{Object.keys(form).map(k=><label key={k}>{k}<input value={(form as any)[k]} onChange={e=>setForm({...form,[k]:e.target.value})} /></label>)}<button className='btn primary' onClick={submitRequest}>{t.submit}</button></div>
+    <div className='mini'><h3>{t.sections[5]}</h3>{reqResult ? <div className='result-card'><p><b>Decision:</b> {reqResult.decision}</p><p><b>Access level:</b> {reqResult.access_level}</p><p><b>Requested:</b> {reqResult.requested_level}</p><p><b>Gaps:</b> {reqResult.gaps?.join(', ') || '-'}</p><p><b>Audit ID:</b> {reqResult.audit_id}</p></div> : '-'}</div>
+    <div className='mini'><h3>{t.sections[6]}</h3><label>actor filter<input value={auditActorFilter} onChange={e=>setAuditActorFilter(e.target.value)} /></label><label>document filter<input value={auditDocFilter} onChange={e=>setAuditDocFilter(e.target.value)} /></label><div className='btn-row'><button className='btn' onClick={fetchAudit}>{t.load}</button><button className='btn' onClick={verify}>{t.verify}</button><button className='btn' onClick={()=>{const blob = new Blob([JSON.stringify(audits,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='audit-log.json'; a.click();}}>{t.exportJson}</button></div>{verifyResult && <p>{verifyResult.valid ? t.verifyOk : t.verifyBad}</p>}<table><thead><tr><th>audit_id</th><th>doc</th><th>actor</th><th>action</th><th>decision</th><th>time</th></tr></thead><tbody>{audits.slice(0,20).map((a:any)=><tr key={a.audit_id}><td>{a.audit_id}</td><td>{a.document_id}</td><td>{a.actor}</td><td>{a.action}</td><td>{a.decision}</td><td>{a.timestamp}</td></tr>)}</tbody></table></div>
+    <div className='mini'><h3>{t.sections[7]}</h3><p>API: {api}</p><p>LOCAL_LLM_ENABLED: {health?.local_llm_enabled ? t.modelOn : t.modelOff}</p><p>Model setting comes from backend env only.</p></div>
+  </div></section>;
 }

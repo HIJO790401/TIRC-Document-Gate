@@ -1,33 +1,107 @@
-import { NavLink, Route, Routes } from 'react-router-dom';
 import { useMemo, useState } from 'react';
-import { actions, documents } from './data/sampleData';
 import { evaluateInterpretation } from './lib/iccEngine';
-import { Language, InterpretationInput, InterpretationResult } from './lib/types';
-import { t, texts } from './lib/i18n';
+import { InterpretationInput, InterpretationResult, Language } from './lib/types';
+import { FieldKey, tx } from './lib/i18n';
+
+type FormFields = Omit<InterpretationInput, 'documentId' | 'action' | 'language'>;
+type CaseContent = { doc: string; action: string; expected: string; form: FormFields; btn: string };
+type DemoCase = { id: string; level: InterpretationResult['accessLevel']; zh: CaseContent; en: CaseContent; docId: string; actionKey: string };
 
 const load = <T,>(k: string, d: T): T => JSON.parse(localStorage.getItem(k) || JSON.stringify(d));
 const save = (k: string, v: unknown) => localStorage.setItem(k, JSON.stringify(v));
 
+const demoCases: DemoCase[] = [
+  { id: 'case1', level: 'T1_TRANSFER_ONLY', docId: 'bank-policy', actionKey: 'transfer', zh: { btn: '案例一｜只允許移交', doc: '銀行風控文件', action: '移交', expected: '第一層｜只允許移交，或第二層｜中層解釋權', form: { subject: '風控團隊將此文件移交給內部合規審查人員。', boundary: '僅限內部審查，不得對外揭露。', cause: '合規單位需要確認文件分類與使用邊界。', replay: '移交紀錄需包含文件雜湊、接收者與時間戳。', repair: '若誤交給錯誤對象，需撤銷權限並通知文件 owner。', responsibility: '風控團隊 owner 承擔移交責任。' } }, en: { btn: 'Case 1 | Transfer Only', doc: 'Bank Risk Policy', action: 'transfer', expected: 'T1_TRANSFER_ONLY or T2_MIDDLE_INTERPRETATION', form: { subject: 'Risk team transfers this document to an internal compliance reviewer.', boundary: 'Internal review only; no external disclosure.', cause: 'Compliance needs to confirm document classification and usage scope.', replay: 'Transfer record includes file hash, recipient, and timestamp.', repair: 'If sent to a wrong recipient, revoke access and notify the document owner.', responsibility: 'Risk team owner is responsible for this transfer.' } } },
+  { id: 'case2', level: 'T2_MIDDLE_INTERPRETATION', docId: 'patch-report', actionKey: 'summarize', zh: { btn: '案例二｜中層解釋權', doc: '資安補丁報告', action: '摘要', expected: '第二層｜中層解釋權', form: { subject: '資安工程師為內部工程團隊整理補丁影響摘要。', boundary: '僅限內部工程使用，不得對外分享漏洞細節。', cause: '工程團隊需要理解受影響模組與修補優先順序。', replay: '摘要需回連原始補丁報告與審計紀錄。', repair: '若邊界描述錯誤，由資安 owner 修正內容。', responsibility: '資安 owner 與工程主管共同承擔責任。' } }, en: { btn: 'Case 2 | Middle Interpretation', doc: 'Security Patch Report', action: 'summarize', expected: 'T2_MIDDLE_INTERPRETATION', form: { subject: 'Security engineer summarizes patch impact for internal engineering.', boundary: 'For internal engineering only; no exploit details externally.', cause: 'Engineering needs to understand affected modules.', replay: 'Summary links back to patch report and audit log.', repair: 'Security owner corrects summary when boundary is incorrect.', responsibility: 'Security owner and engineering lead share responsibility.' } } },
+  { id: 'case3', level: 'T3_FINAL_DELIVERY', docId: 'poc-nda', actionKey: 'final delivery', zh: { btn: '案例三｜最終交付權', doc: 'NDA PoC 報告', action: '最終交付', expected: '第三層｜最終交付權', form: { subject: '專案 owner 將 NDA 核准版本的 PoC 報告交付給指定合作夥伴。', boundary: '僅可交付 NDA 核准版本，內部規則表不得外流。', cause: '合作夥伴完成 NDA 審查後，需要核准的 PoC 套件。', replay: '交付紀錄需包含版本雜湊、接收者、時間戳與核准註記。', repair: '若被誤用，專案 owner 啟動下架、更正與法務追蹤。', responsibility: '專案 owner 承擔最終交付責任。' } }, en: { btn: 'Case 3 | Final Delivery', doc: 'NDA PoC Report', action: 'final delivery', expected: 'T3_FINAL_DELIVERY', form: { subject: 'Project owner delivers NDA-approved PoC report to the named partner.', boundary: 'Only NDA-approved version may be delivered; internal rule tables are excluded.', cause: 'Partner completed NDA review and needs approved PoC package.', replay: 'Delivery record includes version hash, recipient, timestamp, and approval note.', repair: 'If misused, project owner triggers takedown, correction, and legal follow-up.', responsibility: 'Project owner accepts final delivery responsibility.' } } },
+  { id: 'case4', level: 'HOLD_REVIEW', docId: 'strategy-memo', actionKey: 'share external', zh: { btn: '案例四｜需人工審查', doc: '內部策略文件', action: '對外分享', expected: '需人工審查', form: { subject: '團隊成員想要向外部聯絡人分享摘要。', boundary: '可能只分享高層資訊，但核准版本尚不明確。', cause: '外部聯絡人可能需要背景脈絡。', replay: '目前無法確認將送出的版本。', repair: '需要主管確認後才能處理。', responsibility: '責任歸屬尚未明確指定。' } }, en: { btn: 'Case 4 | Hold Review', doc: 'Internal Strategy Memo', action: 'share external', expected: 'HOLD_REVIEW', form: { subject: 'Team member wants to share a summary with an outside contact.', boundary: 'Maybe only high-level content, but approved version is unclear.', cause: 'The outside contact may need context.', replay: 'Not sure which version will be sent.', repair: 'Manager confirmation is required.', responsibility: 'Responsibility owner is not clearly assigned.' } } },
+  { id: 'case5', level: 'VOID_INTERPRETATION', docId: 'bank-policy', actionKey: 'share external', zh: { btn: '案例五｜解釋無效', doc: '銀行風控文件', action: '對外分享', expected: '解釋無效', form: { subject: '大家都說這份文件可以分享。', boundary: '沒有清楚邊界。', cause: '可能有幫助。', replay: '沒有回放。', repair: '不確定。', responsibility: '僅供參考。' } }, en: { btn: 'Case 5 | Void Interpretation', doc: 'Bank Risk Policy', action: 'share external', expected: 'VOID_INTERPRETATION', form: { subject: 'Everyone says this is safe to share.', boundary: 'No clear boundary.', cause: 'Probably useful.', replay: 'No replay.', repair: 'Not sure.', responsibility: 'For reference only.' } } }
+];
+
+const emptyForm: FormFields = { subject: '', boundary: '', cause: '', replay: '', repair: '', responsibility: '' };
+
 export function App() {
   const [lang, setLang] = useState<Language>(load('lang', 'zh-TW'));
-  const [policy, setPolicy] = useState(load('policy', { classification: 'Internal', allowLocalAI: true, allowExternalShare: false, requireNda: true }));
-  const [logs, setLogs] = useState<InterpretationResult[]>(load('audit', []));
-  const [docId, setDocId] = useState(documents[0].id);
-  const [action, setAction] = useState(actions[0]);
-  const [form, setForm] = useState<Omit<InterpretationInput, 'documentId'|'action'|'language'>>({ subject:'', boundary:'', cause:'', replay:'', repair:'', responsibility:''});
+  const [selectedCase, setSelectedCase] = useState(demoCases[0]);
+  const [advancedForm, setAdvancedForm] = useState<FormFields>(load('advanced-form', emptyForm));
   const [result, setResult] = useState<InterpretationResult | null>(null);
-  const required = useMemo(()=> action.includes('delivery')||action.includes('external')?'T3_FINAL_DELIVERY': action.includes('summarize')||action.includes('AI')?'T2_MIDDLE_INTERPRETATION':'T1_TRANSFER_ONLY', [action]);
-  const evaluate = () => {
-    const res = evaluateInterpretation({ documentId: docId, action, language: lang, ...form });
-    setResult(res); const next=[res,...logs]; setLogs(next); save('audit',next);
+  const c = tx(lang);
+  const active = lang === 'zh-TW' ? selectedCase.zh : selectedCase.en;
+
+  const required = useMemo(() => {
+    const action = selectedCase.actionKey;
+    if (action.includes('final') || action.includes('external')) return 'T3_FINAL_DELIVERY';
+    if (action.includes('summarize') || action.includes('ask')) return 'T2_MIDDLE_INTERPRETATION';
+    return 'T1_TRANSFER_ONLY';
+  }, [selectedCase.actionKey]);
+
+  const runDemo = (form: FormFields) => {
+    const res = evaluateInterpretation({ documentId: selectedCase.docId, action: selectedCase.actionKey, language: lang, ...form });
+    setResult(res);
+    const logs = load<InterpretationResult[]>('audit', []);
+    save('audit', [res, ...logs].slice(0, 20));
   };
-  const link = (to:string, label:string)=> <NavLink to={to} className='nav'>{label}</NavLink>;
-  return <div className='layout'><header><h1>{t(texts.appName,lang)}</h1><p>{t(texts.tagline,lang)}</p><button onClick={()=>{const n=lang==='zh-TW'?'en':'zh-TW'; setLang(n); save('lang',n);}}>{lang==='zh-TW'?'English':'繁體中文'}</button></header><nav>{link('/',t(texts.nav.home,lang))}{link('/concept',t(texts.nav.concept,lang))}{link('/demo',t(texts.nav.demo,lang))}{link('/policy',t(texts.nav.policy,lang))}{link('/audit',t(texts.nav.audit,lang))}{link('/local',t(texts.nav.local,lang))}</nav><Routes>
-  <Route path='/' element={<section className='card'><h2>{t(texts.appName,lang)}</h2><p>{t(texts.tagline,lang)}</p><ul><li>TIRC: Triple Interpretation Rights Chain</li><li>ICC: Interpretation Closure Core</li><li>RCK: Responsibility-Cognition Key</li></ul></section>} />
-  <Route path='/concept' element={<section className='card'><h2>Concept</h2><p>Traditional ACL asks read/open. TIRC checks transfer, interpretation, final delivery rights.</p><p>T1/T2/T3 + HOLD/VOID with closure-based ICC.</p></section>} />
-  <Route path='/demo' element={<section className='card'><h2>Demo Flow</h2><label>Document<select value={docId} onChange={e=>setDocId(e.target.value)}>{documents.map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select></label><label>Action<select value={action} onChange={e=>setAction(e.target.value)}>{actions.map(a=><option key={a}>{a}</option>)}</select></label><p>Required Level: <b>{required}</b></p>{Object.keys(form).map((k)=><label key={k}>{k}<input value={(form as any)[k]} onChange={e=>setForm({...form,[k]:e.target.value})}/></label>)}<button onClick={evaluate}>Evaluate ICC</button>{result&&<div><p>Decision: <span className={result.accessLevel}>{result.accessLevel}</span></p><p>{result.explanation}</p><pre>{JSON.stringify(result,null,2)}</pre></div>}</section>} />
-  <Route path='/policy' element={<section className='card'><h2>Policy Builder</h2><label>Classification<select value={policy.classification} onChange={e=>setPolicy({...policy,classification:e.target.value})}><option>Public</option><option>Internal</option><option>Confidential</option><option>Secret</option><option>Core</option></select></label><label><input type='checkbox' checked={policy.allowLocalAI} onChange={e=>setPolicy({...policy,allowLocalAI:e.target.checked})}/>allow local AI</label><label><input type='checkbox' checked={policy.allowExternalShare} onChange={e=>setPolicy({...policy,allowExternalShare:e.target.checked})}/>allow external share</label><label><input type='checkbox' checked={policy.requireNda} onChange={e=>setPolicy({...policy,requireNda:e.target.checked})}/>require NDA</label><button onClick={()=>save('policy',policy)}>save</button><button onClick={()=>{const p={classification:'Internal',allowLocalAI:true,allowExternalShare:false,requireNda:true}; setPolicy(p); save('policy',p);}}>reset sample policy</button></section>} />
-  <Route path='/audit' element={<section className='card'><h2>Audit Log</h2><button onClick={()=>{const blob=new Blob([JSON.stringify(logs,null,2)]);const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='audit.json';a.click();}}>Export JSON</button><table><thead><tr><th>timestamp</th><th>action</th><th>requested_level</th><th>decision</th><th>gaps</th><th>audit_id</th></tr></thead><tbody>{logs.map((l)=><tr key={l.auditId}><td>{l.timestamp}</td><td>{action}</td><td>{required}</td><td>{l.accessLevel}</td><td>{l.gaps.join(',')}</td><td>{l.auditId}</td></tr>)}</tbody></table></section>} />
-  <Route path='/local' element={<section className='card'><h2>Local Deployment</h2><p>npm install && npm run dev, or docker compose up. Optional local model via Ollama/local API; fallback deterministic extractor; no outbound default.</p></section>} />
-  </Routes></div>;
+
+  return <div className='page'>
+    <header className='hero card'>
+      <div className='lang-wrap'><button className='lang-btn' onClick={() => { const n: Language = lang === 'zh-TW' ? 'en' : 'zh-TW'; setLang(n); save('lang', n); }}>{c.langSwitch}</button></div>
+      <h1>{c.heroTitleEn}<br />{c.heroTitleZh}</h1>
+      <p>{c.heroSubtitle}</p><p>{c.heroNote}</p>
+      <div className='btn-row'><a className='btn primary' href='https://hijo790401.github.io/shen-yao-portal/' target='_blank' rel='noreferrer'>{c.portal}</a><a className='btn' href='https://github.com/HIJO790401/TIRC-Document-Gate' target='_blank' rel='noreferrer'>{c.repo}</a></div>
+    </header>
+
+    <section className='card'><h2>{c.whyTitle}</h2><p>{c.why1}</p><p>{c.why2}</p><p>{c.why3}</p></section>
+
+    <section className='card'><h2>{c.rightsTitle}</h2><div className='grid3'>
+      <article className='mini'><h3>{c.lv1}</h3><p><b>Code:</b> T1_TRANSFER_ONLY</p><p>{c.lv1d}</p></article>
+      <article className='mini'><h3>{c.lv2}</h3><p><b>Code:</b> T2_MIDDLE_INTERPRETATION</p><p>{c.lv2d}</p></article>
+      <article className='mini'><h3>{c.lv3}</h3><p><b>Code:</b> T3_FINAL_DELIVERY</p><p>{c.lv3d}</p></article>
+    </div><div className='status-row'><span>{c.hold}</span><small>(HOLD_REVIEW)</small><span>{c.void}</span><small>(VOID_INTERPRETATION)</small></div></section>
+
+    <section className='card'>
+      <h2>{c.fixedDemo}</h2><p>{c.selectCase}</p>
+      <div className='case-grid'>{demoCases.map((item, i) => <button key={item.id} className={`case-btn ${item.id === selectedCase.id ? 'active' : ''}`} onClick={() => setSelectedCase(item)}>{(lang==='zh-TW'?item.zh.btn:item.en.btn) || c.caseNames[i]}</button>)}</div>
+      <div className='mini'>
+        <p><b>{c.doc}：</b>{active.doc}</p><p><b>{c.action}：</b>{active.action}</p><p><b>{c.expected}：</b>{active.expected}</p><h3>{c.closureTitle}</h3>
+        {(Object.keys(active.form) as FieldKey[]).map((k)=><p key={k}><b>{c.fieldLabels[k]}：</b>{active.form[k]}</p>)}
+      </div>
+      <button className='btn primary' onClick={() => runDemo(active.form)}>{c.runDemo}</button>
+      {result && <div className='result'><p><b>{c.result.required}：</b>{required}</p><p><b>{c.result.decision}：</b>{result.decision} / {result.accessLevel}</p><p><b>{c.result.scores}：</b>{Object.entries(result.scores).map(([k,v])=>`${k}:${v}`).join(' | ')}</p><p><b>{c.result.gaps}：</b>{result.gaps.length ? result.gaps.join(', ') : (lang==='zh-TW'?'無':'none')}</p><p><b>{c.result.explanation}：</b>{result.explanation}</p><p><b>{c.result.audit}：</b>{result.auditId}</p></div>}
+      <details className='advanced'><summary>{c.advanced}</summary>{(Object.keys(emptyForm) as FieldKey[]).map((k)=><label key={k}>{c.fieldLabels[k]}<input value={advancedForm[k]} onChange={(e)=>{const n={...advancedForm,[k]:e.target.value};setAdvancedForm(n);save('advanced-form',n);}} /></label>)}<button className='btn' onClick={()=>runDemo(advancedForm)}>{c.runDemo}</button></details>
+    </section>
+
+    <section className='card'><h2>{c.flowTitle}</h2><p className='flow'>{c.flow}</p></section>
+    <section className='card'><h2>{c.depTitle}</h2><h3>{c.depA}</h3><p>{c.depAText}</p><h3>{c.depB}</h3><pre>git clone https://github.com/HIJO790401/TIRC-Document-Gate.git\ncd TIRC-Document-Gate/demo\nnpm install\nnpm run dev</pre><h3>{c.depC}</h3><p>{c.depCText}</p><pre>docker compose up --build</pre><h3>{c.depD}</h3><pre>cd demo\nnpm run build:pages</pre><p>{c.ghSetting}</p></section>
+
+    <LocalEdition lang={lang} />
+
+    <footer className='card footer'><div className='btn-row'><a className='btn primary' href='https://hijo790401.github.io/shen-yao-portal/' target='_blank' rel='noreferrer'>{c.portal}</a><a className='btn' href='https://github.com/HIJO790401/TIRC-Document-Gate' target='_blank' rel='noreferrer'>{c.footerRepo}</a></div><p>Wen-Yao Hsu / Shen-Yao 888π</p><p>許文耀／沈耀888π</p><p>{c.founder}</p></footer>
+  </div>;
+}
+
+type LocalProps = { lang: Language };
+function LocalEdition({ lang }: LocalProps) {
+  const api = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:8000';
+  const [mode, setMode] = useState<'demo'|'local'>('demo');
+  const [users, setUsers] = useState<any[]>([]);
+  const [actor, setActor] = useState('user1');
+  const [docs, setDocs] = useState<any[]>([]);
+  const [title, setTitle] = useState(''); const [content, setContent] = useState('');
+  const [docId, setDocId] = useState(''); const [result, setResult] = useState<any>(null);
+  const [form, setForm] = useState({subject:'',boundary:'',cause:'',replay:'',repair:'',responsibility:''});
+  const t = lang==='zh-TW' ? {local:'Local Mode（本地版）', switch:'切換模式', importDoc:'文件匯入', list:'文件列表', run:'送出審查', actor:'身份', action:'操作', audit:'審計驗證'} : {local:'Local Mode', switch:'Switch mode', importDoc:'Import Document', list:'Documents', run:'Submit Review', actor:'Actor', action:'Action', audit:'Audit Verify'};
+  const loadUsers = async()=> setUsers(await (await fetch(`${api}/users`)).json());
+  const loadDocs = async()=> setDocs(await (await fetch(`${api}/documents`)).json());
+  const importDoc = async()=>{await fetch(`${api}/documents/import_text`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title,content,classification_level:'Internal',owner:actor,status:'active'})}); await loadDocs();};
+  const request = async()=>{const r=await fetch(`${api}/access/request`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({document_id:docId,actor,action:'summarize',...form})}); setResult(await r.json());};
+  const verify = async()=> alert(JSON.stringify(await (await fetch(`${api}/audit/verify`)).json()));
+  return <section className='card'><h2>{t.local}</h2><button className='btn' onClick={()=>setMode(mode==='demo'?'local':'demo')}>{t.switch}: {mode}</button>{mode==='local' && <>
+    <div className='btn-row'><button className='btn' onClick={loadUsers}>Load Users</button><button className='btn' onClick={loadDocs}>Load Docs</button></div>
+    <p>{t.actor}: <select value={actor} onChange={e=>setActor(e.target.value)}>{users.map(u=><option key={u.username} value={u.username}>{u.username}({u.role})</option>)}</select></p>
+    <h3>{t.importDoc}</h3><input placeholder='title' value={title} onChange={e=>setTitle(e.target.value)} /><textarea value={content} onChange={e=>setContent(e.target.value)} /><button className='btn' onClick={importDoc}>Import</button>
+    <h3>{t.list}</h3><ul>{docs.map(d=><li key={d.document_id}><button className='btn' onClick={()=>setDocId(d.document_id)}>{d.title} {d.hash_12}</button></li>)}</ul>
+    <h3>{t.action}</h3>{Object.keys(form).map(k=><label key={k}>{k}<input value={(form as any)[k]} onChange={e=>setForm({...form,[k]:e.target.value})} /></label>)}
+    <button className='btn primary' onClick={request}>{t.run}</button>{result && <pre>{JSON.stringify(result,null,2)}</pre>}
+    <button className='btn' onClick={verify}>{t.audit}</button>
+  </>}</section>;
 }

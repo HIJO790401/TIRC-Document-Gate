@@ -1,19 +1,72 @@
 import { Language } from './types';
 
-export const texts = {
-  appName: { 'zh-TW': '三重解釋權文件防火牆', en: 'TIRC Document Gate' },
-  tagline: {
-    'zh-TW': '不只問能否讀取，而是是否有資格移交、解釋與最終交付意義。',
-    en: 'Not only who can open a file, but who can transfer, interpret, and finally deliver its meaning.'
+export type FieldKey = 'subject' | 'boundary' | 'cause' | 'replay' | 'repair' | 'responsibility';
+
+export const ui = {
+  'zh-TW': {
+    langSwitch: 'English',
+    heroTitleEn: 'TIRC Document Gate',
+    heroTitleZh: '三重解釋權文件防火牆',
+    heroSubtitle: '不是只檢查誰能打開文件，而是檢查誰有資格移交、解釋、最終交付文件意義。',
+    heroNote: '本頁是純前端示範。真正機密文件請下載 Repo，部署在自己的內部環境。',
+    portal: '官方入口', repo: '下載 Repo',
+    whyTitle: '為什麼需要 TIRC',
+    why1: '傳統 ACL、SSO、MFA 主要回答「使用者能不能打開文件」。',
+    why2: 'TIRC 進一步追問：使用者能不能移交？能不能解釋？能不能最終對外交付？',
+    why3: '它是在既有安全框架上新增一層「解釋權與責任鏈」檢查。',
+    rightsTitle: '三重解釋權',
+    lv1: '第一層｜只允許移交', lv2: '第二層｜中層解釋權', lv3: '第三層｜最終交付權',
+    lv1d: '只能確認文件要交給誰、為什麼交、不能交給誰；不能解釋內容。',
+    lv2d: '可以內部摘要、協作、處理；不可對外交付。',
+    lv3d: '可以對外交付，但必須具備完整責任閉環。',
+    hold: '需人工審查', void: '解釋無效',
+    fixedDemo: '固定示範', selectCase: '選擇示範案例',
+    caseNames: ['案例一｜只允許移交','案例二｜中層解釋權','案例三｜最終交付權','案例四｜需人工審查','案例五｜解釋無效'],
+    doc: '文件', action: '操作', expected: '預期結果',
+    closureTitle: '解釋閉環內容', runDemo: '執行示範',
+    fieldLabels: { subject: '主體', boundary: '邊界', cause: '因果', replay: '回放', repair: '修復', responsibility: '責任' } as Record<FieldKey,string>,
+    result: { required: '需求層級', decision: '判定結果', scores: '閉環分數', gaps: '缺口標記', explanation: '判定說明', audit: '審計 ID' },
+    advanced: '進階：自行輸入測試',
+    flowTitle: '運作流程', flow: '文件 → 既有權限檢查 → 三重解釋權 → 解釋閉環檢查 → 層級判定 → 審計紀錄',
+    depTitle: '部署說明',
+    depA: 'A. 前端示範頁', depAText: '本頁是純前端靜態示範，只使用範例資料，不處理真實機密文件。',
+    depB: 'B. 下載並本地執行', depC: 'C. 企業內部部署',
+    depCText: '真正機密文件請企業下載 Repo 後，部署在自己的內部環境，並可接本地模型或私有模型。資料不需要送到外部雲端。',
+    depD: 'D. 手動更新 GitHub Pages', ghSetting: 'GitHub 設定：Settings → Pages → Deploy from branch → main / docs',
+    footerRepo: 'GitHub Repo', founder: '語意防火牆創辦人'
   },
-  nav: {
-    home: { 'zh-TW': '首頁', en: 'Home' },
-    concept: { 'zh-TW': '概念', en: 'Concept' },
-    demo: { 'zh-TW': '示範流程', en: 'Demo Flow' },
-    policy: { 'zh-TW': '策略設定器', en: 'Policy Builder' },
-    audit: { 'zh-TW': '審計紀錄', en: 'Audit Log' },
-    local: { 'zh-TW': '本地部署', en: 'Local Deployment' }
+  en: {
+    langSwitch: '繁體中文',
+    heroTitleEn: 'TIRC Document Gate',
+    heroTitleZh: 'Triple Interpretation Rights Firewall',
+    heroSubtitle: 'Not only who can open a file, but who is qualified to transfer, interpret, and finally deliver its meaning.',
+    heroNote: 'This page is a static frontend demo. For real confidential files, download the repo and deploy it inside your own environment.',
+    portal: 'Official Portal', repo: 'Download Repo',
+    whyTitle: 'Why TIRC',
+    why1: 'Traditional ACL, SSO, and MFA mainly answer whether a user can open a file.',
+    why2: 'TIRC asks further: can the user transfer it, interpret it, and finally deliver it externally?',
+    why3: 'It adds an interpretation-rights and responsibility-chain layer on top of existing security controls.',
+    rightsTitle: 'Three Interpretation Rights',
+    lv1: 'Level 1 | Transfer Only', lv2: 'Level 2 | Middle Interpretation', lv3: 'Level 3 | Final Delivery',
+    lv1d: 'Can confirm recipient and transfer purpose, but cannot interpret the content.',
+    lv2d: 'Can summarize, collaborate, and process internally; cannot deliver externally.',
+    lv3d: 'Can deliver externally with full responsibility closure.',
+    hold: 'Hold Review', void: 'Void Interpretation',
+    fixedDemo: 'Fixed Demo', selectCase: 'Select a demo case',
+    caseNames: ['Case 1 | Transfer Only','Case 2 | Middle Interpretation','Case 3 | Final Delivery','Case 4 | Hold Review','Case 5 | Void Interpretation'],
+    doc: 'Document', action: 'Action', expected: 'Expected',
+    closureTitle: 'Closure Content', runDemo: 'Run Demo',
+    fieldLabels: { subject: 'Subject', boundary: 'Boundary', cause: 'Cause', replay: 'Replay', repair: 'Repair', responsibility: 'Responsibility' } as Record<FieldKey,string>,
+    result: { required: 'Required Level', decision: 'Decision', scores: 'Scores', gaps: 'Gaps', explanation: 'Explanation', audit: 'Audit ID' },
+    advanced: 'Advanced: try your own input',
+    flowTitle: 'Flow', flow: 'Document → Existing access control → Triple interpretation rights → Interpretation closure check → Level decision → Audit log',
+    depTitle: 'Deployment',
+    depA: 'A. GitHub Pages Demo', depAText: 'This page is a static frontend demo using sample data only.',
+    depB: 'B. Download and run locally', depC: 'C. Internal deployment',
+    depCText: 'For real confidential files, deploy this repository inside your own environment and connect your local or private model. Documents do not need to leave your environment.',
+    depD: 'D. Manual GitHub Pages rebuild', ghSetting: 'GitHub setting: Settings → Pages → Deploy from branch → main / docs',
+    footerRepo: 'GitHub Repo', founder: 'Founder of Semantic Firewall'
   }
 } as const;
 
-export const t = (obj: Record<Language, string>, lang: Language) => obj[lang];
+export const tx = (lang: Language) => ui[lang];

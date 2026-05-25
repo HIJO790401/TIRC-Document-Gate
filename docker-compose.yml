@@ -4,6 +4,11 @@ services:
     ports: ["8000:8000"]
     volumes:
       - ./data:/data
+    environment:
+      - LOCAL_LLM_ENABLED=${LOCAL_LLM_ENABLED:-false}
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://ollama:11434}
+      - LOCAL_LLM_MODEL=${LOCAL_LLM_MODEL:-llama3.1:8b}
+
   frontend:
     image: node:20-alpine
     working_dir: /app
@@ -12,3 +17,13 @@ services:
       - ./demo:/app
     ports: ["5173:5173"]
     depends_on: [backend]
+
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ["llm"]
+    ports: ["11434:11434"]
+    volumes:
+      - ollama:/root/.ollama
+
+volumes:
+  ollama:

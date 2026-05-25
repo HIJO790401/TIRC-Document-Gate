@@ -1,67 +1,35 @@
 # TIRC Document Gate Local Edition
 
-## Product Positioning / 產品定位
-TIRC Document Gate Local Edition is a local pre-delivery confidential document interpretation-rights firewall.
-TIRC Document Gate Local Edition 是本地部署的機密文件交付前解釋權審查站。
+## 這個專案是什麼 / What this is
+TIRC Document Gate Local Edition 是本地部署的交付前文件解釋權審查站。
+It is a local pre-delivery interpretation-rights review station.
 
-## Two Modes / 兩種模式
-1. **GitHub Pages Demo** (static): fixed 5 cases only, no real document processing.
-2. **Local Edition** (runtime): real document intake, policy setting, ICC review, hash-chain audit.
+## 下載後怎麼用 / Quick local flow
+1. `docker compose up --build`
+2. 打開 `http://localhost:5173`
+3. 匯入文件（TXT/MD/PDF/DOCX）
+4. 設定三層解釋權 policy（T1/T2/T3）
+5. 提出操作請求（transfer/summarize/ask local AI/export/share external/final delivery）
+6. 查看 ICC 判定結果（requested_level/decision/access_level/scores/gaps）
+7. 查看審計紀錄與 hash-chain 驗證
 
-## What works now / 目前可用
-- Local users/roles (admin, owner, reviewer, user) in SQLite.
-- Document import: TXT / Markdown / PDF / DOCX.
-- Local storage: `/data/documents` + SQLite metadata (`document_id`, `title`, `classification_level`, `content_text`, `sha256_hash`, `created_at`, `owner`, `status`).
-- Per-document policy: T1/T2/T3 actors, local AI/external share/NDA flags, recipients, note.
-- Access request actions: transfer / summarize / ask local AI / export / share external / final delivery.
-- Deterministic ICC engine is final decision authority.
-- Optional local LLM extraction endpoint (`/local-llm/extract`) for field draft assistance only.
-- Append-only hash-chain audit log in `/data/audit_log.jsonl` + `/audit/verify`.
+## 目前 Local Edition 可以做什麼 / What works now
+- 本地帳號角色（admin/owner/reviewer/user）
+- 本地文件匯入與列表
+- 三層解釋權 policy 設定
+- deterministic ICC 規則判定
+- append-only hash-chain audit log
+- optional Ollama/local LLM 抽取輔助（不決定放行）
 
-## Not claimed / 不宣稱
-- Not auto-protecting all company documents.
-- Not auto-integrated with Gmail/Slack/Drive.
-- Not replacing IAM/SSO/DLP.
+## 目前不能宣稱 / Not claimed
+- 不會自動接管整間公司的文件
+- 不會自動整合 Gmail / Slack / Drive / SharePoint / SSO / DLP
 
-## Future integration / 未來整合
+## Future integration
 - SSO
-- Google Drive / SharePoint / Slack / Gmail / GitHub connectors
-- Enterprise DLP
+- Google Drive / SharePoint / Slack / Gmail / GitHub
+- DLP integration
 - Windows / Mac agent
 
-## Run
-```bash
-docker compose up --build
-```
-Backend: `http://localhost:8000`
-Frontend: `http://localhost:5173`
-
-Optional local model mode:
-```bash
-LOCAL_LLM_ENABLED=true docker compose --profile llm up --build
-```
-GitHub Settings → Pages → Deploy from branch → `main` / `docs`
-
-## Key APIs
-- `GET /health`
-- `GET /users`
-- `POST /documents/import_text`
-- `POST /documents/upload`
-- `GET /documents`
-- `GET /documents/{document_id}`
-- `POST /documents/{document_id}/policy`
-- `GET /documents/{document_id}/policy`
-- `POST /access/request`
-- `POST /interpretation/evaluate`
-- `POST /local-llm/extract`
-- `GET /audit`
-- `GET /audit/{document_id}`
-- `GET /audit/verify`
-
-## GitHub Pages (manual)
-```bash
-cd demo
-npm install
-npm run build:pages
-```
-Settings → Pages → Deploy from branch → `main` / `docs`
+## GitHub Pages
+GitHub Pages 只做固定示範（manual `main/docs`），不處理真文件。

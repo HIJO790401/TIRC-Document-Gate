@@ -25,6 +25,3 @@ In GitHub repository settings:
 4. Folder: `/docs`
 5. Save
 
-Site URL:
-
-- https://hijo790401.github.io/TIRC-Document-Gate/

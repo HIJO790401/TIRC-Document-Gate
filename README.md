@@ -1,8 +1,5 @@
 # TIRC Document Gate / 三重解釋權文件防火牆
 
-## Live Demo
-- https://hijo790401.github.io/TIRC-Document-Gate/
-
 ## Official Portal
 - https://hijo790401.github.io/shen-yao-portal/
 

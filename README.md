@@ -1,72 +1,66 @@
-# TIRC Document Gate / 三重解釋權文件防火牆
+# TIRC Document Gate Local Edition
 
-## What is TIRC Document Gate?
-TIRC Document Gate adds an interpretation-rights gate above traditional file access control.  
-TIRC Document Gate 在傳統檔案權限之上，加上一層「解釋權與責任鏈」檢查。
+## Product Positioning / 產品定位
+TIRC Document Gate Local Edition is a local pre-delivery confidential document interpretation-rights firewall.
+TIRC Document Gate Local Edition 是本地部署的機密文件交付前解釋權審查站。
 
-## Why traditional access control is not enough
-Traditional ACL answers “can open file”. TIRC answers whether user can transfer, interpret, and deliver meaning with responsibility closure.  
-傳統 ACL 只回答「能否打開文件」，TIRC 追問是否有資格移交、解釋、最終交付意義並承擔後果。
+## Two Modes / 兩種模式
+1. **GitHub Pages Demo** (static): fixed 5 cases only, no real document processing.
+2. **Local Edition** (runtime): real document intake, policy setting, ICC review, hash-chain audit.
 
-## T1 / T2 / T3 + HOLD / VOID
-- T1_TRANSFER_ONLY: transfer only / 只允許移交
-- T2_MIDDLE_INTERPRETATION: internal interpretation / 允許內部解釋協作
-- T3_FINAL_DELIVERY: external delivery with closure / 可最終對外交付
-- HOLD_REVIEW: requires manual review / 需人工審查
-- VOID_INTERPRETATION: interpretation invalid / 解釋無效
+## What works now / 目前可用
+- Local users/roles (admin, owner, reviewer, user) in SQLite.
+- Document import: TXT / Markdown / PDF / DOCX.
+- Local storage: `/data/documents` + SQLite metadata (`document_id`, `title`, `classification_level`, `content_text`, `sha256_hash`, `created_at`, `owner`, `status`).
+- Per-document policy: T1/T2/T3 actors, local AI/external share/NDA flags, recipients, note.
+- Access request actions: transfer / summarize / ask local AI / export / share external / final delivery.
+- Deterministic ICC engine is final decision authority.
+- Optional local LLM extraction endpoint (`/local-llm/extract`) for field draft assistance only.
+- Append-only hash-chain audit log in `/data/audit_log.jsonl` + `/audit/verify`.
 
-## ICC Interpretation Closure Core
-Check SUBJECT / BOUNDARY / CAUSE / REPLAY / REPAIR / RESPONSIBILITY each time; deterministic engine decides by closure quality, not fixed quizzes.
+## Not claimed / 不宣稱
+- Not auto-protecting all company documents.
+- Not auto-integrated with Gmail/Slack/Drive.
+- Not replacing IAM/SSO/DLP.
 
-## Security boundary
-- This project does not replace encryption, IAM, SSO, MFA, or DLP.
-- It adds an interpretation-rights and responsibility-chain layer above existing security controls.
-- Local-first by design.
-- Confidential documents should remain inside the user’s own environment.
-- The demo uses sample documents only.
-- 本專案不取代加密、IAM、SSO、MFA、DLP。
-- 本專案是在既有安全框架上增加「解釋權」與「責任鏈」層。
-- 預設本地優先。
-- 機密文件應留在使用者自己的內部環境。
-- Demo 只使用假資料與範例文件。
+## Future integration / 未來整合
+- SSO
+- Google Drive / SharePoint / Slack / Gmail / GitHub connectors
+- Enterprise DLP
+- Windows / Mac agent
 
-## Project links
-- Repository: https://github.com/HIJO790401/TIRC-Document-Gate
-- Official Portal: https://hijo790401.github.io/shen-yao-portal/
-- GitHub Pages Demo URL: https://hijo790401.github.io/TIRC-Document-Gate/
-
-## Run frontend demo
+## Run
 ```bash
-cd demo
-npm install
-npm run dev
+docker compose up --build
+```
+Backend: `http://localhost:8000`
+Frontend: `http://localhost:5173`
+
+Optional local model mode:
+```bash
+LOCAL_LLM_ENABLED=true docker compose --profile llm up --build
 ```
 
-## Build GitHub Pages (manual)
+## Key APIs
+- `GET /health`
+- `GET /users`
+- `POST /documents/import_text`
+- `POST /documents/upload`
+- `GET /documents`
+- `GET /documents/{document_id}`
+- `POST /documents/{document_id}/policy`
+- `GET /documents/{document_id}/policy`
+- `POST /access/request`
+- `POST /interpretation/evaluate`
+- `POST /local-llm/extract`
+- `GET /audit`
+- `GET /audit/{document_id}`
+- `GET /audit/verify`
+
+## GitHub Pages (manual)
 ```bash
 cd demo
 npm install
 npm run build:pages
 ```
-
-Then set in GitHub:
-
-**Settings → Pages → Deploy from a branch → main → /docs**
-
-## Local deployment
-```bash
-docker compose up --build
-```
-Frontend: http://localhost:5173  Backend: http://localhost:8000/health
-
-## Local LLM connector
-Use local model endpoint (e.g. Ollama). If unavailable, use deterministic mock extractor and deterministic ICC decision engine.
-
-## Use cases
-Banking confidential docs, security patch reports, NDA/PoC reports, internal strategy documents, AI agent document access gate.
-
-## Roadmap
-- policy simulation
-- enterprise SSO integration adapters
-- stronger compliance export formats
-- model connector hardening
+Settings → Pages → Deploy from branch → `main` / `docs`

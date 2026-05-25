@@ -3,7 +3,7 @@
 .page{max-width:1180px;margin:0 auto;padding:20px}
 .card{background:#fff;border:1px solid #cfe0f8;border-radius:14px;padding:20px;margin-bottom:16px;box-shadow:0 3px 10px rgba(15,42,67,.06)}
 .hero{background:linear-gradient(135deg,#0b3d91,#1f6feb);color:#fff;border-color:#0b3d91}
-.hero .btn{border-color:#cfe0f8;color:#fff}.hero .btn.primary{background:#fff;color:#0b3d91}
+.hero .btn{border-color:#cfe0f8;color:#0b3d91;background:#fff}.hero .btn.primary{background:#fff;color:#0b3d91}
 .lang-wrap{display:flex;justify-content:flex-end}.lang-btn,.btn{border:1px solid #1f6feb;background:#fff;color:#0b3d91;padding:8px 12px;border-radius:10px;cursor:pointer;text-decoration:none;display:inline-block}
 .btn.primary{background:#1f6feb;color:#fff}.btn-row{display:flex;gap:10px;flex-wrap:wrap}
 .grid3,.panel-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.panel-grid{grid-template-columns:1fr 1fr}

@@ -61,36 +61,78 @@ function LocalEdition({ lang }: { lang: Language }) {
   const zh = lang === 'zh-TW';
   const t = zh ? {
     title: 'V1 Local Edition 操作台',
-    sections: ['1) 身份流程','2) 匯入文件','3) 文件列表','4) 三層解釋權設定','5) 送審','6) 判定結果','7) 審計紀錄','8) 本地模型狀態'],
-    load: '重新載入', bind: '綁定此文件', actor: '目前操作者', owner: '文件 owner', selectedDoc: '目前綁定文件',
-    importText: '匯入文字文件', upload: '上傳檔案', titleInput: '文件標題', contentInput: '文件內容',
-    setPolicy: '儲存三層政策', submit: '送審', verify: '驗證 hash-chain', exportJson: '匯出 JSON',
-    verifyOk: '驗證成功：hash-chain 完整', verifyBad: '驗證失敗：hash-chain 斷裂',
-    modelOn: '已啟用', modelOff: '未啟用',
-    action: '送審操作',
+    sections: ['1. 身份流程','2. 匯入文件','3. 文件列表','4. 三層解釋權設定','5. 操作送審','6. 判定結果','7. 審計紀錄','8. 本地模型狀態'],
+    desc: {
+      identity: '請先選擇目前操作者與文件 owner。後續匯入、設定權限與送審都會使用此身份。',
+      import: '可貼上文字匯入，或上傳 TXT、Markdown、PDF、DOCX 檔案。文件只保存在本地環境。',
+      list: '選擇一份文件後，才能設定三層解釋權或提出送審。',
+      policy: '勾選哪些使用者可以移交、內部解釋、最終交付此文件。',
+      request: '選擇文件操作，並填寫主體、邊界、因果、回放、修復、責任。',
+      result: '系統會依 ICC 規則引擎判定本次操作可達到哪一層。',
+      audit: '每次送審都會留下紀錄，並串接 hash-chain 供事後驗證。',
+      model: '本地模型只用於抽取與整理，不負責最終判定。'
+    },
+    labels: {
+      load: '重新載入', bind: '綁定此文件', actor: '目前操作者', owner: '文件 owner', selectedDoc: '目前綁定文件',
+      title: '文件名稱', content: '文件內容', importText: '匯入文字文件', upload: '上傳檔案',
+      docId: '文件 ID', docTitle: '文件名稱', docOwner: '文件 owner', status: '狀態', policyStatus: '權限設定狀態',
+      policyFlags: '政策旗標', allowLocalAi: '允許本地 AI 讀取', allowExternalShare: '允許對外分享', requireNda: '需要 NDA 或正式授權',
+      extRecipients: '允許之外部接收者（每行一位）', blockedNote: '封鎖區段備註', setPolicy: '儲存三層政策',
+      action: '操作', submit: '送審', verify: '驗證 hash-chain', exportJson: '匯出 JSON',
+      decision: '判定結果', requested: '需求層級', access: '可用層級', gaps: '缺口標記', auditId: '審計 ID',
+      auditCols: ['審計 ID','文件','操作者','操作','需求層級','判定結果','缺口','時間','文件 hash','紀錄 hash'],
+      actorFilter: '操作者篩選', docFilter: '文件篩選',
+      verifyOk: '審計鏈完整，尚未偵測到斷鏈。', verifyBad: '審計鏈異常，斷點位置：',
+      noGaps: '本次未偵測到主要缺口。', advanced: '進階資料（Raw JSON）',
+      modelTitle: '本地模型狀態', modelSource: '狀態來源：後端 /health', modelStatus: '目前狀態', modelOn: '已啟用', modelOff: '未啟用',
+      modelNote: '本地模型只用於抽取與整理主體、邊界、因果、回放、修復、責任。最終 T1 / T2 / T3 / HOLD / VOID 判定仍由 ICC 規則引擎決定。本頁不修改 docker 環境變數，若需啟用本地模型，請用 LOCAL_LLM_ENABLED=true 啟動。'
+    },
     actions: { transfer: '移交', summarize: '摘要', 'ask local AI': '詢問本地模型', export: '匯出', 'share external': '對外分享', 'final delivery': '最終交付' } as Record<string, string>,
-    fields: { subject: '主體', boundary: '邊界', cause: '因果', replay: '回放', repair: '修復', responsibility: '責任' } as Record<string,string>,
-    decision: '判定', access: '權限層級', requested: '需求層級', gaps: '缺口', auditId: '審計 ID',
-    policyFlags: '政策旗標', extRecipients: '允許之外部接收者（每行一位）', blockedNote: '封鎖區段備註',
-    auditActor: 'actor 篩選', auditDoc: '文件篩選',
-    auditHumanDecision: '判定結果', time: '時間',
-    explainModel: '狀態來源：後端 GET /health。此區僅顯示狀態，不在前端修改 env。'
+    fields: {
+      subject: ['主體', '誰要做這件事？誰主張這次操作？'],
+      boundary: ['邊界', '這次操作只在哪個範圍成立？不能外推到哪裡？'],
+      cause: ['因果', '為什麼需要這次操作？它要解決什麼問題？'],
+      replay: ['回放', '事後怎麼查證這次操作？紀錄在哪裡？'],
+      repair: ['修復', '如果錯了，誰修？怎麼修？'],
+      responsibility: ['責任', '這次操作造成後果，誰承擔？']
+    } as Record<string, [string, string]>
   } : {
     title: 'V1 Local Edition Console',
-    sections: ['1) Identity Flow','2) Import Document','3) Document List','4) Three-Level Policy','5) Submit Review','6) Decision Result','7) Audit Log','8) Local Model Status'],
-    load: 'Reload', bind: 'Bind this document', actor: 'Current actor', owner: 'Document owner', selectedDoc: 'Bound document',
-    importText: 'Import text document', upload: 'Upload file', titleInput: 'Document title', contentInput: 'Document content',
-    setPolicy: 'Save policy', submit: 'Submit review', verify: 'Verify hash-chain', exportJson: 'Export JSON',
-    verifyOk: 'Verification passed: hash-chain intact', verifyBad: 'Verification failed: hash-chain broken',
-    modelOn: 'Enabled', modelOff: 'Disabled',
-    action: 'Review action',
+    sections: ['1. Identity Flow','2. Import Document','3. Document List','4. Three-Level Policy','5. Submit Review','6. Decision Result','7. Audit Log','8. Local Model Status'],
+    desc: {
+      identity: 'Select current actor and document owner first. This identity is used across import, policy, and review.',
+      import: 'Paste text or upload TXT/Markdown/PDF/DOCX. Documents stay in your local environment.',
+      list: 'Select one document before configuring policy or submitting a review request.',
+      policy: 'Choose which users can transfer, interpret internally, or deliver this document.',
+      request: 'Pick an action and fill subject, boundary, cause, replay, repair, and responsibility.',
+      result: 'ICC rule engine decides the allowed interpretation level for this action.',
+      audit: 'Every review is recorded and chained for hash-chain verification.',
+      model: 'Local model supports extraction only and does not make final decisions.'
+    },
+    labels: {
+      load: 'Reload', bind: 'Bind document', actor: 'Current actor', owner: 'Document owner', selectedDoc: 'Bound document',
+      title: 'Document title', content: 'Document content', importText: 'Import text document', upload: 'Upload file',
+      docId: 'Document ID', docTitle: 'Title', docOwner: 'Owner', status: 'Status', policyStatus: 'Policy status',
+      policyFlags: 'Policy flags', allowLocalAi: 'Allow local AI read', allowExternalShare: 'Allow external share', requireNda: 'Require NDA or formal authorization',
+      extRecipients: 'Allowed external recipients (one per line)', blockedNote: 'Blocked sections note', setPolicy: 'Save three-level policy',
+      action: 'Action', submit: 'Submit review', verify: 'Verify hash-chain', exportJson: 'Export JSON',
+      decision: 'Decision', requested: 'Requested level', access: 'Accessible level', gaps: 'Gaps', auditId: 'Audit ID',
+      auditCols: ['Audit ID','Document','Actor','Action','Requested level','Decision','Gaps','Time','Document hash','Entry hash'],
+      actorFilter: 'Actor filter', docFilter: 'Document filter',
+      verifyOk: 'Audit chain is valid and no break is detected.', verifyBad: 'Audit chain is broken at index: ',
+      noGaps: 'No major gaps detected in this request.', advanced: 'Advanced data (Raw JSON)',
+      modelTitle: 'Local model status', modelSource: 'Source: backend /health', modelStatus: 'Current status', modelOn: 'Enabled', modelOff: 'Disabled',
+      modelNote: 'Local model is used only to extract and organize subject, boundary, cause, replay, repair, and responsibility. Final T1 / T2 / T3 / HOLD / VOID decisions are still made by the ICC rule engine. This page does not modify docker environment variables; to enable local model, start with LOCAL_LLM_ENABLED=true.'
+    },
     actions: { transfer: 'Transfer', summarize: 'Summarize', 'ask local AI': 'Ask local AI', export: 'Export', 'share external': 'Share external', 'final delivery': 'Final delivery' } as Record<string, string>,
-    fields: { subject: 'Subject', boundary: 'Boundary', cause: 'Cause', replay: 'Replay', repair: 'Repair', responsibility: 'Responsibility' } as Record<string,string>,
-    decision: 'Decision', access: 'Access level', requested: 'Requested level', gaps: 'Gaps', auditId: 'Audit ID',
-    policyFlags: 'Policy flags', extRecipients: 'Allowed external recipients (one per line)', blockedNote: 'Blocked sections note',
-    auditActor: 'actor filter', auditDoc: 'document filter',
-    auditHumanDecision: 'Decision', time: 'Time',
-    explainModel: 'Source: backend GET /health. Status only; env values are not edited in frontend.'
+    fields: {
+      subject: ['Subject', 'Who performs this action and who claims it?'],
+      boundary: ['Boundary', 'Where does this action apply, and where does it not?'],
+      cause: ['Cause', 'Why is this action needed and what problem does it solve?'],
+      replay: ['Replay', 'How can this action be verified later and where is the record?'],
+      repair: ['Repair', 'If wrong, who fixes it and how?'],
+      responsibility: ['Responsibility', 'Who takes responsibility for outcomes?']
+    } as Record<string, [string, string]>
   };
 
   const [users, setUsers] = useState<any[]>([]); const [docs, setDocs] = useState<any[]>([]); const [audits, setAudits] = useState<any[]>([]);
@@ -120,17 +162,19 @@ function LocalEdition({ lang }: { lang: Language }) {
   const verify = async () => setVerifyResult(await (await fetch(`${api}/audit/verify`)).json());
 
   const toggleActor = (k: 't1_transfer_only_actors' | 't2_middle_interpretation_actors' | 't3_final_delivery_actors', u: string) => setPolicy((p: any) => ({ ...p, [k]: p[k].includes(u) ? p[k].filter((x: string) => x !== u) : [...p[k], u] }));
-  const humanDecision = (d: string) => zh ? (d === 'ALLOW' ? '允許' : d === 'HOLD' ? '需人工審查' : d === 'VOID' ? '解釋無效' : d) : d;
-  const humanGap = (g: string) => ({ subject_missing: zh ? '主體未填' : 'Missing subject', boundary_missing: zh ? '邊界未填' : 'Missing boundary', cause_missing: zh ? '因果未填' : 'Missing cause', replay_missing: zh ? '回放未填' : 'Missing replay', repair_missing: zh ? '修復未填' : 'Missing repair', responsibility_missing: zh ? '責任未填' : 'Missing responsibility', t3_closure_incomplete: zh ? '第三層責任閉環不完整' : 'T3 closure incomplete', nda_context_missing: zh ? '缺 NDA 情境' : 'NDA context missing', external_share_not_allowed: zh ? '政策禁止對外分享' : 'External share not allowed', actor_not_allowed_by_policy: zh ? '角色不在政策允許清單' : 'Actor not allowed by policy' } as any)[g] || g;
+  const levelMap: Record<string, string> = zh ? { T1_TRANSFER_ONLY: '第一層｜只允許移交', T2_MIDDLE_INTERPRETATION: '第二層｜中層解釋權', T3_FINAL_DELIVERY: '第三層｜最終交付權', HOLD_REVIEW: '需人工審查', VOID_INTERPRETATION: '解釋無效' } : { T1_TRANSFER_ONLY: 'Level 1 | Transfer Only', T2_MIDDLE_INTERPRETATION: 'Level 2 | Middle Interpretation', T3_FINAL_DELIVERY: 'Level 3 | Final Delivery', HOLD_REVIEW: 'Hold review', VOID_INTERPRETATION: 'Void interpretation' };
+  const humanDecision = (d: string) => zh ? (d === 'ALLOW' ? '允許' : d === 'HOLD' ? '暫停審查' : d === 'VOID' ? '阻斷' : d) : d;
+  const humanGap = (g: string) => ({ actor_not_allowed_by_policy: zh ? '目前身份不在此文件的授權名單中。' : 'Current identity is not in this document authorization list.', external_share_not_allowed: zh ? '此文件的權限設定不允許對外分享。' : 'External sharing is not allowed by policy.', nda_context_missing: zh ? '此文件需要 NDA 或正式授權邊界，但本次送審未確認。' : 'NDA or formal authorization boundary is required but not confirmed.', t3_closure_incomplete: zh ? '最終交付需要完整回放、修復與責任說明。' : 'Final delivery requires complete replay, repair, and responsibility.', subject_missing: zh ? '缺少主體說明。' : 'Missing subject.', boundary_missing: zh ? '缺少邊界說明。' : 'Missing boundary.', cause_missing: zh ? '缺少因果說明。' : 'Missing cause.', replay_missing: zh ? '缺少回放說明。' : 'Missing replay.', repair_missing: zh ? '缺少修復說明。' : 'Missing repair.', responsibility_missing: zh ? '缺少責任說明。' : 'Missing responsibility.', responsibility_weak: zh ? '責任說明不足。' : 'Responsibility is weak.', boundary_weak: zh ? '邊界說明不足。' : 'Boundary is weak.', replay_weak: zh ? '回放說明不足。' : 'Replay is weak.', repair_weak: zh ? '修復說明不足。' : 'Repair is weak.' } as any)[g] || g;
+  const shortHash = (h?: string) => (h ? h.slice(0, 12) : '-');
 
   return <section className='card'><h2>{t.title}</h2><div className='v1-grid'>
-    <div className='mini'><h3>{t.sections[0]}</h3><button className='btn' onClick={async () => { await fetchUsers(); await fetchHealth(); }}>{t.load}</button><label>{t.actor}<select value={actor} onChange={e => setActor(e.target.value)}>{users.map(u => <option key={u.username} value={u.username}>{u.username} ({u.role})</option>)}</select></label><label>{t.owner}<select value={owner} onChange={e => setOwner(e.target.value)}>{users.filter(u => ['owner', 'admin'].includes(u.role)).map(u => <option key={u.username} value={u.username}>{u.username} ({u.role})</option>)}</select></label></div>
-    <div className='mini'><h3>{t.sections[1]}</h3><input placeholder={t.titleInput} value={title} onChange={e => setTitle(e.target.value)} /><textarea placeholder={t.contentInput} value={content} onChange={e => setContent(e.target.value)} /><div className='btn-row'><button className='btn' onClick={importText}>{t.importText}</button><label className='btn'>{t.upload}<input type='file' style={{ display: 'none' }} onChange={uploadFile} /></label></div></div>
-    <div className='mini'><h3>{t.sections[2]}</h3><button className='btn' onClick={fetchDocs}>{t.load}</button><table><thead><tr><th>ID</th><th>Title</th><th>Owner</th><th>Status</th><th>Policy</th><th></th></tr></thead><tbody>{docs.map(d => <tr key={d.document_id}><td>{d.document_id}</td><td>{d.title}</td><td>{d.owner}</td><td>{d.status}</td><td>{d.policy_status}</td><td><button className='btn' onClick={() => bindDocOwner(d.document_id)}>{t.bind}</button></td></tr>)}</tbody></table><p><b>{t.selectedDoc}：</b>{selectedDoc || '-'}</p></div>
-    <div className='mini'><h3>{t.sections[3]}</h3><p>T1</p>{users.map(u => <label key={`t1-${u.username}`}><input type='checkbox' checked={policy.t1_transfer_only_actors.includes(u.username)} onChange={() => toggleActor('t1_transfer_only_actors', u.username)} />{u.username}</label>)}<p>T2</p>{users.map(u => <label key={`t2-${u.username}`}><input type='checkbox' checked={policy.t2_middle_interpretation_actors.includes(u.username)} onChange={() => toggleActor('t2_middle_interpretation_actors', u.username)} />{u.username}</label>)}<p>T3</p>{users.map(u => <label key={`t3-${u.username}`}><input type='checkbox' checked={policy.t3_final_delivery_actors.includes(u.username)} onChange={() => toggleActor('t3_final_delivery_actors', u.username)} />{u.username}</label>)}<p>{t.policyFlags}</p><label><input type='checkbox' checked={policy.allow_local_ai} onChange={e => setPolicy({ ...policy, allow_local_ai: e.target.checked })} />allow_local_ai</label><label><input type='checkbox' checked={policy.allow_external_share} onChange={e => setPolicy({ ...policy, allow_external_share: e.target.checked })} />allow_external_share</label><label><input type='checkbox' checked={policy.require_nda} onChange={e => setPolicy({ ...policy, require_nda: e.target.checked })} />require_nda</label><label>{t.extRecipients}<textarea value={recipientsText} onChange={e => setRecipientsText(e.target.value)} /></label><label>{t.blockedNote}<input value={policy.blocked_sections_note} onChange={e => setPolicy({ ...policy, blocked_sections_note: e.target.value })} /></label><button className='btn primary' onClick={savePolicyApi}>{t.setPolicy}</button></div>
-    <div className='mini'><h3>{t.sections[4]}</h3><label>{t.action}<select value={action} onChange={e => setAction(e.target.value)}>{Object.keys(t.actions).map(k => <option key={k} value={k}>{t.actions[k]}</option>)}</select></label>{Object.keys(form).map(k => <label key={k}>{t.fields[k]}<input value={(form as any)[k]} onChange={e => setForm({ ...form, [k]: e.target.value })} /></label>)}<button className='btn primary' onClick={submitRequest}>{t.submit}</button></div>
-    <div className='mini'><h3>{t.sections[5]}</h3>{reqResult ? <div className='result-card'><p><b>{t.decision}：</b>{humanDecision(reqResult.decision)}</p><p><b>{t.access}：</b>{reqResult.access_level}</p><p><b>{t.requested}：</b>{reqResult.requested_level}</p><p><b>{t.gaps}：</b>{reqResult.gaps?.length ? reqResult.gaps.map(humanGap).join('、') : '-'}</p><p><b>{t.auditId}：</b>{reqResult.audit_id}</p></div> : '-'}</div>
-    <div className='mini'><h3>{t.sections[6]}</h3><label>{t.auditActor}<input value={auditActorFilter} onChange={e => setAuditActorFilter(e.target.value)} /></label><label>{t.auditDoc}<input value={auditDocFilter} onChange={e => setAuditDocFilter(e.target.value)} /></label><div className='btn-row'><button className='btn' onClick={fetchAudit}>{t.load}</button><button className='btn' onClick={verify}>{t.verify}</button><button className='btn' onClick={() => { const blob = new Blob([JSON.stringify(audits, null, 2)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'audit-log.json'; a.click(); }}>{t.exportJson}</button></div>{verifyResult && <p>{verifyResult.valid ? t.verifyOk : t.verifyBad}</p>}<table><thead><tr><th>audit_id</th><th>doc</th><th>actor</th><th>action</th><th>{t.auditHumanDecision}</th><th>{t.time}</th></tr></thead><tbody>{audits.slice(0, 20).map((a: any) => <tr key={a.audit_id}><td>{a.audit_id}</td><td>{a.document_id}</td><td>{a.actor}</td><td>{t.actions[a.action] || a.action}</td><td>{humanDecision(a.decision)}</td><td>{a.timestamp}</td></tr>)}</tbody></table></div>
-    <div className='mini'><h3>{t.sections[7]}</h3><div className='btn-row'><button className='btn' onClick={fetchHealth}>{t.load}</button></div><p>API: {api}</p><p>LOCAL_LLM_ENABLED: {health?.local_llm_enabled ? t.modelOn : t.modelOff}</p><p>{t.explainModel}</p></div>
+    <div className='mini'><h3>{t.sections[0]}</h3><p>{t.desc.identity}</p><button className='btn' onClick={async () => { await fetchUsers(); await fetchHealth(); }}>{t.labels.load}</button><label>{t.labels.actor}<select value={actor} onChange={e => setActor(e.target.value)}>{users.map(u => <option key={u.username} value={u.username}>{u.username} ({u.role})</option>)}</select></label><label>{t.labels.owner}<select value={owner} onChange={e => setOwner(e.target.value)}>{users.filter(u => ['owner', 'admin'].includes(u.role)).map(u => <option key={u.username} value={u.username}>{u.username} ({u.role})</option>)}</select></label></div>
+    <div className='mini'><h3>{t.sections[1]}</h3><p>{t.desc.import}</p><input placeholder={t.labels.title} value={title} onChange={e => setTitle(e.target.value)} /><textarea placeholder={t.labels.content} value={content} onChange={e => setContent(e.target.value)} /><div className='btn-row'><button className='btn' onClick={importText}>{t.labels.importText}</button><label className='btn'>{t.labels.upload}<input type='file' style={{ display: 'none' }} onChange={uploadFile} /></label></div></div>
+    <div className='mini'><h3>{t.sections[2]}</h3><p>{t.desc.list}</p><button className='btn' onClick={fetchDocs}>{t.labels.load}</button><table><thead><tr><th>{t.labels.docId}</th><th>{t.labels.docTitle}</th><th>{t.labels.docOwner}</th><th>{t.labels.status}</th><th>{t.labels.policyStatus}</th><th></th></tr></thead><tbody>{docs.map(d => <tr key={d.document_id}><td>{d.document_id}</td><td>{d.title}</td><td>{d.owner}</td><td>{d.status}</td><td>{d.policy_status}</td><td><button className='btn' onClick={() => bindDocOwner(d.document_id)}>{t.labels.bind}</button></td></tr>)}</tbody></table><p><b>{t.labels.selectedDoc}：</b>{selectedDoc || '-'}</p></div>
+    <div className='mini'><h3>{t.sections[3]}</h3><p>{t.desc.policy}</p><p>T1（T1_TRANSFER_ONLY）</p>{users.map(u => <label key={`t1-${u.username}`}><input type='checkbox' checked={policy.t1_transfer_only_actors.includes(u.username)} onChange={() => toggleActor('t1_transfer_only_actors', u.username)} />{u.username}</label>)}<p>T2（T2_MIDDLE_INTERPRETATION）</p>{users.map(u => <label key={`t2-${u.username}`}><input type='checkbox' checked={policy.t2_middle_interpretation_actors.includes(u.username)} onChange={() => toggleActor('t2_middle_interpretation_actors', u.username)} />{u.username}</label>)}<p>T3（T3_FINAL_DELIVERY）</p>{users.map(u => <label key={`t3-${u.username}`}><input type='checkbox' checked={policy.t3_final_delivery_actors.includes(u.username)} onChange={() => toggleActor('t3_final_delivery_actors', u.username)} />{u.username}</label>)}<p>{t.labels.policyFlags}</p><label><input type='checkbox' checked={policy.allow_local_ai} onChange={e => setPolicy({ ...policy, allow_local_ai: e.target.checked })} />{t.labels.allowLocalAi}</label><label><input type='checkbox' checked={policy.allow_external_share} onChange={e => setPolicy({ ...policy, allow_external_share: e.target.checked })} />{t.labels.allowExternalShare}</label><label><input type='checkbox' checked={policy.require_nda} onChange={e => setPolicy({ ...policy, require_nda: e.target.checked })} />{t.labels.requireNda}</label><label>{t.labels.extRecipients}<textarea value={recipientsText} onChange={e => setRecipientsText(e.target.value)} /></label><label>{t.labels.blockedNote}<input value={policy.blocked_sections_note} onChange={e => setPolicy({ ...policy, blocked_sections_note: e.target.value })} /></label><button className='btn primary' onClick={savePolicyApi}>{t.labels.setPolicy}</button></div>
+    <div className='mini'><h3>{t.sections[4]}</h3><p>{t.desc.request}</p><label>{t.labels.action}<select value={action} onChange={e => setAction(e.target.value)}>{Object.keys(t.actions).map(k => <option key={k} value={k}>{t.actions[k]}</option>)}</select></label>{Object.keys(form).map(k => <label key={k}>{t.fields[k][0]}<small>{t.fields[k][1]}</small><input value={(form as any)[k]} onChange={e => setForm({ ...form, [k]: e.target.value })} /></label>)}<button className='btn primary' onClick={submitRequest}>{t.labels.submit}</button></div>
+    <div className='mini'><h3>{t.sections[5]}</h3><p>{t.desc.result}</p>{reqResult ? <><div className='result-card'><p><b>{t.labels.decision}：</b>{humanDecision(reqResult.decision)} {zh ? `（${reqResult.decision}）` : ''}</p><p><b>{t.labels.requested}：</b>{levelMap[reqResult.requested_level] || reqResult.requested_level}</p><p><b>{t.labels.access}：</b>{levelMap[reqResult.access_level] || reqResult.access_level}</p><p><b>{t.labels.gaps}：</b>{reqResult.gaps?.length ? reqResult.gaps.map(humanGap).join('、') : t.labels.noGaps}</p><p><b>{t.labels.auditId}：</b>{reqResult.audit_id}</p></div><details className='advanced'><summary>{t.labels.advanced}</summary><pre>{JSON.stringify(reqResult, null, 2)}</pre></details></> : '-'}</div>
+    <div className='mini'><h3>{t.sections[6]}</h3><p>{t.desc.audit}</p><label>{t.labels.actorFilter}<input value={auditActorFilter} onChange={e => setAuditActorFilter(e.target.value)} /></label><label>{t.labels.docFilter}<input value={auditDocFilter} onChange={e => setAuditDocFilter(e.target.value)} /></label><div className='btn-row'><button className='btn' onClick={fetchAudit}>{t.labels.load}</button><button className='btn' onClick={verify}>{t.labels.verify}</button><button className='btn' onClick={() => { const blob = new Blob([JSON.stringify(audits, null, 2)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'audit-log.json'; a.click(); }}>{t.labels.exportJson}</button></div>{verifyResult && <p>{verifyResult.valid ? t.labels.verifyOk : `${t.labels.verifyBad}${verifyResult.broken_index}`}</p>}<table><thead><tr>{t.labels.auditCols.map((c)=> <th key={c}>{c}</th>)}</tr></thead><tbody>{audits.slice(0, 20).map((a: any) => <tr key={a.audit_id}><td>{a.audit_id}</td><td>{a.document_id}</td><td>{a.actor}</td><td>{t.actions[a.action] || a.action}</td><td>{levelMap[a.requested_level] || a.requested_level}</td><td>{levelMap[a.decision] || humanDecision(a.decision)}</td><td>{a.gaps?.length ? a.gaps.map(humanGap).join('、') : t.labels.noGaps}</td><td>{a.timestamp}</td><td>{shortHash(a.document_hash)}</td><td>{shortHash(a.entry_hash)}</td></tr>)}</tbody></table></div>
+    <div className='mini'><h3>{t.sections[7]}</h3><p>{t.desc.model}</p><div className='btn-row'><button className='btn' onClick={fetchHealth}>{t.labels.load}</button></div><p>{t.labels.modelSource}</p><p>{t.labels.modelStatus}：{health?.local_llm_enabled ? t.labels.modelOn : t.labels.modelOff}</p><p>{t.labels.modelNote}</p></div>
   </div></section>;
 }

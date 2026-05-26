@@ -75,9 +75,11 @@ def _list_dump(v:list[str]): return ','.join(v)
 
 def score(v:str)->int:
     vague=['maybe','probably','depends','not sure','for reference only','可能','應該','看情況','不確定','大家都說','僅供參考']
-    if not v.strip(): return 0
-    if len(v.strip())<8: return 30
-    if any(x in v.lower() for x in vague): return 40
+    t=v.strip()
+    if not t: return 0
+    if len(t)<8: return 30
+    if any(x in t.lower() for x in vague): return 40
+    if len(t)<=30: return 70
     return 100
 
 def required_level(action: str) -> str:
@@ -90,8 +92,8 @@ def evaluate(i: InterpretationInput):
     s={k:score(getattr(i,k)) for k in ['subject','boundary','cause','replay','repair','responsibility']}
     gaps=[f'{k}_missing' for k,v in s.items() if v==0] + [f'{k}_weak' for k,v in s.items() if 0<v<60]
     decision='ALLOW'; access='T2_MIDDLE_INTERPRETATION'
-    if s['subject']==0: decision,access='VOID','VOID_INTERPRETATION'
-    elif s['boundary']==0: decision,access='VOID','VOID_INTERPRETATION'
+    if s['subject']==0 or s['boundary']==0:
+        decision,access='VOID','VOID_INTERPRETATION'
     elif ('share external' in i.action.lower() or 'final delivery' in i.action.lower()) and (s['responsibility']<60 or s['repair']<60 or s['replay']<60):
         decision,access='HOLD','HOLD_REVIEW'
     elif list(v<60 for v in s.values()).count(True)>=4: decision,access='VOID','VOID_INTERPRETATION'
@@ -237,9 +239,6 @@ def audit(actor: str | None = None, document_id: str | None = None):
     if document_id: rows=[r for r in rows if r.get('document_id')==document_id]
     return rows
 
-@app.get('/audit/{document_id}')
-def audit_doc(document_id: str): return audit(document_id=document_id)
-
 @app.get('/audit/verify')
 def audit_verify():
     rows=audit()
@@ -251,3 +250,6 @@ def audit_verify():
         if cur!=r.get('entry_hash'): return {'valid':False,'broken_index':i,'total_entries':len(rows)}
         prev=cur
     return {'valid':True,'broken_index':None,'total_entries':len(rows)}
+
+@app.get('/audit/{document_id}')
+def audit_doc(document_id: str): return audit(document_id=document_id)
